@@ -26,6 +26,7 @@ class Model:
             torch.cuda.set_device(int(args.gpu))
         self.network = TriAN(args)
         self.init_optimizer()
+
         if args.pretrained:
             print('Load pretrained model from %s...' % args.pretrained)
             self.load(args.pretrained)
@@ -149,22 +150,22 @@ class Model:
                 batch_input = [Variable(x) for x in batch_input]
             yield batch_input
 
-    def load_embeddings(self, words, embedding_file):
+    def load_embeddings(self, words, ile):
         """Load pretrained embeddings for a given list of words, if they exist.
 
         Args:
             words: iterable of tokens. Only those that are indexed in the
               dictionary are kept.
-            embedding_file: path to text file of embeddings, space separated.
+            ile: path to text file of embeddings, space separated.
         """
         words = {w for w in words if w in vocab}
         logger.info('Loading pre-trained embeddings for %d words from %s' %
-                    (len(words), embedding_file))
+                    (len(words), ile))
         embedding = self.network.embedding.weight.data
 
         # When normalized, some words are duplicated. (Average the embeddings).
         vec_counts = {}
-        with open(embedding_file) as f:
+        with open(ile) as f:
             for line in f:
                 parsed = line.rstrip().split(' ')
                 assert(len(parsed) == embedding.size(1) + 1)
@@ -211,7 +212,7 @@ class Model:
         logger.info('Loading model %s' % ckt_path)
         saved_params = torch.load(ckt_path, map_location=lambda storage, loc: storage)
         state_dict = saved_params['state_dict']
-        return self.network.load_state_dict(state_dict)
+        return self.network.load_state_dict(state_dict, strict=False)
 
     def cuda(self):
         self.use_cuda = True

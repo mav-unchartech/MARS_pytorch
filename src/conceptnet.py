@@ -2,7 +2,7 @@ from utils import is_stopword
 
 class ConceptNet:
 
-    def __init__(self, path='./data/concept.filter'):
+    def __init__(self, path='/home/unchartech001/GDrive/Marc-Antoine/Project_QAModels/Workspace/MARS_pytorch/data/concept.filter'):
         self.data = {}
         cnt = 0
         for triple in open(path, 'r', encoding='utf-8'):

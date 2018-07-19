@@ -17,9 +17,11 @@ random.seed(args.seed)
 if __name__ == '__main__':
 
     build_vocab()
-    train_data = load_data('./data/train-data-processed.json')
-    train_data += load_data('./data/trial-data-processed.json')
+    train_data = load_data('./data/trial-data-processed.json')
+    train_data += load_data('./data/train-data-processed.json')
     dev_data = load_data('./data/dev-data-processed.json')
+
+
     if args.test_mode:
         # use validation data as training data
         train_data += dev_data
