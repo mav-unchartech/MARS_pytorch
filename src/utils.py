@@ -106,9 +106,9 @@ def gen_race_vocab(data):
 def build_vocab(data=None):
     global vocab, pos_vocab, ner_vocab, rel_vocab
     # build word vocabulary
-    if os.path.exists('MARS_pytorch/data/vocab'):
+    if os.path.exists('./data/vocab'):
         print('Load vocabulary from ./data/vocab...')
-        for w in open('MARS_pytorch/data/vocab', encoding='utf-8'):
+        for w in open('./data/vocab', encoding='utf-8'):
             vocab.add(w.strip())
         print('Vocabulary size: %d' % len(vocab))
     else:
@@ -124,9 +124,9 @@ def build_vocab(data=None):
          writer.write('\n'.join(vocab.tokens()))
          writer.close()
      # build part-of-speech vocabulary
-    if os.path.exists('MARS_pytorch/data/pos_vocab'):
+    if os.path.exists('./data/pos_vocab'):
         print('Load pos vocabulary from ./data/pos_vocab...')
-        for w in open('MARS_pytorch/data/pos_vocab', encoding='utf-8'):
+        for w in open('./data/pos_vocab', encoding='utf-8'):
             pos_vocab.add(w.strip())
         print('POS vocabulary size: %d' % len(pos_vocab))
     else:
@@ -141,9 +141,9 @@ def build_vocab(data=None):
         writer.write('\n'.join(pos_vocab.tokens()))
         writer.close()
     # build named entity vocabulary
-    if os.path.exists('MARS_pytorch/data/ner_vocab'):
+    if os.path.exists('./data/ner_vocab'):
         print('Load ner vocabulary from ./data/ner_vocab...')
-        for w in open('MARS_pytorch/data/ner_vocab', encoding='utf-8'):
+        for w in open('./data/ner_vocab', encoding='utf-8'):
             ner_vocab.add(w.strip())
         print('NER vocabulary size: %d' % len(ner_vocab))
     else:
@@ -157,9 +157,9 @@ def build_vocab(data=None):
         writer.write('\n'.join(ner_vocab.tokens()))
         writer.close()
     # Load conceptnet relation vocabulary
-    assert os.path.exists('MARS_pytorch/data/rel_vocab')
+    assert os.path.exists('./data/rel_vocab')
     print('Load relation vocabulary from ./data/rel_vocab...')
-    for w in open('MARS_pytorch/data/rel_vocab', encoding='utf-8'):
+    for w in open('./data/rel_vocab', encoding='utf-8'):
         rel_vocab.add(w.strip())
     print('Rel vocabulary size: %d' % len(rel_vocab))
 
@@ -241,14 +241,6 @@ def eval_based_on_outputs(path):
     assert len(prediction) == len(gold)
     acc = sum([int(p == g) for p, g in zip(prediction, gold)]) / len(gold)
     print('Accuracy on dev_data: %f' % acc)
-
-# Added by MAV on 13/7
-def load_vocab(path):
-    global vocab
-    vocab = utils.Dictionary()
-    for line in open(path):
-        vocab.add(line[:-1])
-    return vocab
 
 if __name__ == '__main__':
     # build_vocab()
