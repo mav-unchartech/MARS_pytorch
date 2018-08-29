@@ -99,16 +99,16 @@ def gen_race_vocab(data):
         if key not in vocab:
             race_vocab.add(key)
     print('Vocabulary size: %d' % len(race_vocab))
-    writer = open('./data/race_vocab', 'w', encoding='utf-8')
+    writer = open('../data/race_vocab', 'w', encoding='utf-8')
     writer.write('\n'.join(race_vocab.tokens()))
     writer.close()
 
 def build_vocab(data=None):
     global vocab, pos_vocab, ner_vocab, rel_vocab
     # build word vocabulary
-    if os.path.exists('./data/vocab'):
-        print('Load vocabulary from ./data/vocab...')
-        for w in open('./data/vocab', encoding='utf-8'):
+    if os.path.exists('../data/vocab'):
+        print('Load vocabulary from ../data/vocab...')
+        for w in open('../data/vocab', encoding='utf-8'):
             vocab.add(w.strip())
         print('Vocabulary size: %d' % len(vocab))
     else:
@@ -120,13 +120,13 @@ def build_vocab(data=None):
          for key, val in cnt.most_common():
              vocab.add(key)
          print('Vocabulary size: %d' % len(vocab))
-         writer = open('./data/vocab', 'w', encoding='utf-8')
+         writer = open('../data/vocab', 'w', encoding='utf-8')
          writer.write('\n'.join(vocab.tokens()))
          writer.close()
      # build part-of-speech vocabulary
-    if os.path.exists('./data/pos_vocab'):
-        print('Load pos vocabulary from ./data/pos_vocab...')
-        for w in open('./data/pos_vocab', encoding='utf-8'):
+    if os.path.exists('../data/pos_vocab'):
+        print('Load pos vocabulary from ../data/pos_vocab...')
+        for w in open('../data/pos_vocab', encoding='utf-8'):
             pos_vocab.add(w.strip())
         print('POS vocabulary size: %d' % len(pos_vocab))
     else:
@@ -137,13 +137,13 @@ def build_vocab(data=None):
         for key, val in cnt.most_common():
             if key: pos_vocab.add(key)
         print('POS vocabulary size: %d' % len(pos_vocab))
-        writer = open('./data/pos_vocab', 'w', encoding='utf-8')
+        writer = open('../data/pos_vocab', 'w', encoding='utf-8')
         writer.write('\n'.join(pos_vocab.tokens()))
         writer.close()
     # build named entity vocabulary
-    if os.path.exists('./data/ner_vocab'):
-        print('Load ner vocabulary from ./data/ner_vocab...')
-        for w in open('./data/ner_vocab', encoding='utf-8'):
+    if os.path.exists('../data/ner_vocab'):
+        print('Load ner vocabulary from ../data/ner_vocab...')
+        for w in open('../data/ner_vocab', encoding='utf-8'):
             ner_vocab.add(w.strip())
         print('NER vocabulary size: %d' % len(ner_vocab))
     else:
@@ -153,13 +153,13 @@ def build_vocab(data=None):
         for key, val in cnt.most_common():
             if key: ner_vocab.add(key)
         print('NER vocabulary size: %d' % len(ner_vocab))
-        writer = open('./data/ner_vocab', 'w', encoding='utf-8')
+        writer = open('../data/ner_vocab', 'w', encoding='utf-8')
         writer.write('\n'.join(ner_vocab.tokens()))
         writer.close()
     # Load conceptnet relation vocabulary
-    assert os.path.exists('./data/rel_vocab')
-    print('Load relation vocabulary from ./data/rel_vocab...')
-    for w in open('./data/rel_vocab', encoding='utf-8'):
+    assert os.path.exists('../data/rel_vocab')
+    print('Load relation vocabulary from ../data/rel_vocab...')
+    for w in open('../data/rel_vocab', encoding='utf-8'):
         rel_vocab.add(w.strip())
     print('Rel vocabulary size: %d' % len(rel_vocab))
 
@@ -172,7 +172,7 @@ def gen_submission(data, prediction):
     writer.close()
 
 def gen_debug_file(data, prediction):
-    writer = open('./data/output.log', 'w', encoding='utf-8')
+    writer = open('../data/output.log', 'w', encoding='utf-8')
     cur_pred, cur_choices = [], []
     for i, ex in enumerate(data):
         if i + 1 == len(data):
@@ -225,7 +225,7 @@ def gen_final_submission(data):
     print('Please submit final_output.zip to codalab.')
 
 def eval_based_on_outputs(path):
-    dev_data = load_data('./data/dev-data-processed.json')
+    dev_data = load_data('../data/dev-data-processed.json')
     label = [int(ex.label) for ex in dev_data]
     gold, cur_gold = [], []
     for i, ex in enumerate(dev_data):
@@ -244,8 +244,8 @@ def eval_based_on_outputs(path):
 
 if __name__ == '__main__':
     # build_vocab()
-    trial_data = load_data('./data/trial-data-processed.json')
-    train_data = load_data('./data/train-data-processed.json')
-    dev_data = load_data('./data/dev-data-processed.json')
-    test_data = load_data('./data/test-data-processed.json')
+    trial_data = load_data('../data/trial-data-processed.json')
+    train_data = load_data('../data/train-data-processed.json')
+    dev_data = load_data('../data/dev-data-processed.json')
+    test_data = load_data('../data/test-data-processed.json')
     build_vocab(trial_data + train_data + dev_data + test_data)

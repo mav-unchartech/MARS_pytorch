@@ -53,7 +53,7 @@ class TriAN(nn.Module):
             padding=args.rnn_padding)
 
         # RNN answer encoder
-        choice_input_size = 3 * self.embedding_dim
+        choice_input_size = 0 #3 * self.embedding_dim
         self.choice_rnn = layers.StackedBRNN(
             input_size=choice_input_size,
             hidden_size=args.hidden_size,
@@ -101,6 +101,7 @@ class TriAN(nn.Module):
         c_q_weighted_emb = nn.functional.dropout(c_q_weighted_emb, p=self.args.dropout_emb, training=self.training)
         c_p_weighted_emb = nn.functional.dropout(c_p_weighted_emb, p=self.args.dropout_emb, training=self.training)
         # print('p_q_weighted_emb', p_q_weighted_emb.size())
+        print(p_c_rel_emb.size())
 
         p_rnn_input = torch.cat([p_emb, p_q_weighted_emb, p_pos_emb, p_ner_emb, f_tensor, p_q_rel_emb, p_c_rel_emb], dim=2)
         c_rnn_input = torch.cat([c_emb, c_q_weighted_emb, c_p_weighted_emb], dim=2)

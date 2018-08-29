@@ -9,7 +9,7 @@ import numpy as np
 
 from utils import vocab
 from doc import batchify
-from trian import TriAN
+from mars import TriAN
 
 logger = logging.getLogger()
 
