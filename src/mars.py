@@ -52,8 +52,10 @@ class TriAN(nn.Module):
 
         # Output sizes of rnn encoders
         doc_hidden_size = 2 * args.hidden_size
+        self.doc_hidden_size = doc_hidden_size
         question_hidden_size = 2 * args.hidden_size
-
+        self.question_hidden_size = question_hidden_size
+        # print('p_mask : ' , doc_input_size)
         # Answer merging
         self.q_self_attn_start = layers.LinearSeqAttn(question_hidden_size)
         self.p_q_attn_start = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=question_hidden_size)
@@ -61,24 +63,14 @@ class TriAN(nn.Module):
         self.q_self_attn_end = layers.LinearSeqAttn(question_hidden_size)
         self.p_q_attn_end = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=question_hidden_size)
 
-        # Neural Net
-        self.feedforward_start = layers.NeuralNet(input_size=doc_hidden_size,
-                                                hidden_size=doc_hidden_size,
-                                                num_classes=doc_hidden_size)
-        self.feedforward_end = layers.NeuralNet(input_size=doc_hidden_size,
-                                                hidden_size=doc_hidden_size,
-                                                num_classes=doc_hidden_size)
+
 
         # Single map proba
 
         ### ??????????????????????????????????????????????????
-        self.p_q_bilinear = nn.Linear(doc_hidden_size, question_hidden_size)
-        self.q_p_bilinear = nn.Linear(question_hidden_size, doc_hidden_size)
 
         # Proba attention
-        print('problem')
-        self.start_end_attn = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=doc_hidden_size)
-        self.end_start_attn = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=doc_hidden_size)
+
 
     def forward(self, p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation):
         p_emb, q_emb = self.embedding(p), self.embedding(q)
@@ -111,7 +103,7 @@ class TriAN(nn.Module):
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens, q_mask)
         q_hidden_start = layers.weighted_avg(q_hiddens, q_merge_weights_start)
-
+        # print('p_hiddenf : ', p_hiddens.size())
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start, p_mask)
         p_hidden_start = layers.weighted_avg(p_hiddens, p_merge_weights_start)
         #print('p_hidden_start', p_hidden_start.size())
@@ -120,37 +112,68 @@ class TriAN(nn.Module):
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
-        print('q_hidden_end', q_hidden_end.size())
+        # print('q_merge_weights_end', q_merge_weights_end.size())
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
-        print('p_hidden_end', p_hidden_end.size())
+        # print('p_hidden_end', p_hidden_end.size())
         ####
 
+
+        print('problem')
+        print(self.doc_hidden_size)
+        print(self.question_hidden_size)
+        print(p_mask.size()[1])
+        p_q_bilinear_start = nn.Bilinear(self.doc_hidden_size,  self.question_hidden_size, p_mask.size()[1] )
+        p_q_bilinear_end = nn.Bilinear(self.doc_hidden_size, self.question_hidden_size,  p_mask.size()[1] )
+
+
         #### START SINGLE PROBA MAP
-        logits_start = self.p_q_bilinear(p_hidden_start) * q_hidden_start
-        print('logits_start', logits_start, logits_start.size())
+        logits_start = p_q_bilinear_start(p_hidden_start,q_hidden_start)
+        # print('logits_start', logits_start, logits_start.size())
         single_map_proba_start = F.sigmoid(logits_start)
-        print('doc hidden size : ', doc_hidden_size)
-        #print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
+
+        # print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
         ####
 
         #### END SINGLE PROBA MAP
-        logits_end = self.q_p_bilinear(q_hidden_end) * p_hidden_end
+        logits_end = p_q_bilinear_end(p_hidden_end,q_hidden_end)
         single_map_proba_end = F.sigmoid(logits_end)
-        #print('single_map_proba_end', single_map_proba_end.size())
-        ####
+        # print('single_map_proba_end', single_map_proba_end.size())
         #print('p_mask',p_mask, p_mask.size())
 
-         #map_mask = torch.ByteTensor(1, 192).fill_(1)
-        #### PASSAGE-QUESTION ATTENTION
-        attn_map_start = self.start_end_attn(single_map_proba_start.unsqueeze(1), single_map_proba_end, map_mask)
-        attn_map_end = self.end_start_attn(single_map_proba_end.unsqueeze(1), single_map_proba_start, map_mask)
         ####
+
+
+        #### Definir la taille des outputs, qui depend du text)
+
+
+        self.start_end_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
+        self.end_start_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
+
+
+
+
+
+
+        #### PASSAGE-QUESTION ATTENTION
+        attn_map_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
+        attn_map_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
+
+        ####
+        # Neural Net
+        self.feedforward_start = layers.NeuralNet(input_size=p_mask.size()[1],
+                                                hidden_size=p_mask.size()[1],
+                                                num_classes=p_mask.size()[1])
+        self.feedforward_end = layers.NeuralNet(input_size=p_mask.size()[1],
+                                                hidden_size=p_mask.size()[1],
+                                                num_classes=p_mask.size()[1])
 
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start)
         ff_map_end = self.feedforward_end(attn_map_end)
-        ####
 
-        return ff_map_start, ff_map_end
+        #### Calcul Probas
+        proba_start = F.softmax(ff_map_start)
+        probas_end = F.softmax(ff_map_end)
+        return proba_start, probas_end

@@ -59,13 +59,12 @@ class StackedBRNN(nn.Module):
         """Faster encoding that ignores any padding."""
         # Transpose batch and sequence dims
         x = x.transpose(0, 1)
-        print(x)
-        print(x.size())
+
+        print('x size ',x.size())
         # Encode all layers
         outputs = [x]
         for i in range(self.num_layers):
-            print(' num layers :')
-            print(self.num_layers)
+
             rnn_input = outputs[-1]
 
             # Apply dropout to hidden input
@@ -74,8 +73,7 @@ class StackedBRNN(nn.Module):
                                       p=self.dropout_rate,
                                       training=self.training)
             # Forward
-            print(rnn_input)
-            print(self.rnns)
+
             rnn_output = self.rnns[i](rnn_input)[0]
             outputs.append(rnn_output)
 
@@ -238,21 +236,79 @@ class BilinearSeqAttn(nn.Module):
         """
 
         Wy = self.linear(y) if self.linear is not None else y
-        print('Wy : ',Wy.size())
-        print('Wyunsqueezed', Wy.unsqueeze(2).size())
-        print('x', x.size())
-        print('x_mask', x_mask.size())
-        print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
+        # print('Wy : ',Wy.size())
+        # print('Wyunsqueezed', Wy.unsqueeze(2).size())
+        # print('x', x.size())
+        # print('x_mask', x_mask.size())
+        # print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
 
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
-        print('squeezed : ', xWy)
+        # print('squeezed : ', xWy)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy)
         else:
             alpha = xWy.exp()
-        print('alpha', alpha.size())
+        # print('alpha', alpha.size())
         return alpha
+
+
+
+
+
+
+
+class BilinearProbaAttn(nn.Module):
+    """A bilinear attention layer over a sequence X w.r.t y:
+
+    * o_i = softmax(x_i'Wy) for x_i in X.
+
+    Optionally don't normalize output weights.
+    """
+
+    def __init__(self, x_size, y_size, identity=False, normalize=True):
+        super(BilinearProbaAttn, self).__init__()
+        self.normalize = normalize
+
+        # If identity is true, we just use a dot product without transformation.
+        if not identity:
+            self.linear = nn.Linear(y_size, x_size)
+        else:
+            self.linear = None
+
+    def forward(self, x, y, x_mask):
+        """
+        Args:
+            x: batch * len * hdim1
+            y: batch * hdim2
+            x_mask: batch * len (1 for padding, 0 for true)
+        Output:
+            alpha = batch * len
+        """
+        x = x.unsqueeze(2)
+        x = x.squeeze(0)
+        Wy = self.linear(y) if self.linear is not None else y
+
+        # print('Wy : ',Wy.size())
+        # print('Wyunsqueezed', Wy.size())
+        # print('x', x.size())
+        # print('x_mask', x_mask.size())
+        # print('Wybmm', x.mm(Wy).size())
+
+        xWy = x.mm(Wy)
+        xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        if self.normalize:
+            alpha = F.softmax(xWy)
+        else:
+            alpha = xWy.exp()
+        # print(alpha.size())
+        # print('alpha', alpha)
+        return alpha
+
+
+
+
+
 
 
 class LinearSeqAttn(nn.Module):

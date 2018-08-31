@@ -54,10 +54,22 @@ class Model:
         iter_cnt, num_iter = 0, (len(train_data) + self.batch_size - 1) // self.batch_size
         for batch_input in self._iter_data(train_data):
             feed_input = [x for x in batch_input[:-1]]
-            y = batch_input[-1]
+            # y = batch_input[-1]
+            y = [int(i) for i in batch_input[-1][0]]
+            y1 = y[0]
+            y2 = y[1]
             pred_proba = self.network(*feed_input)
+            pred_proba_start = pred_proba[0]
+            pred_proba_end = pred_proba[1]
+            pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
+            pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
 
-            loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
+            # loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
+
+            loss1 = F.nll_loss(pred_proba_start, y1, size_average=True)
+            loss2 = F.nll_loss(pred_proba_end, y2, size_average=True)
+            loss = (loss1 + loss2) / 2
+
             self.optimizer.zero_grad()
             loss.backward()
 
@@ -130,10 +142,17 @@ class Model:
         self.network.eval()
         prediction = []
         for batch_input in self._iter_data(test_data):
-            feed_input = [x for x in batch_input[:-1]] #not using the last input: y
+            feed_input = [x for x in batch_input[:-1]]
+            # print('batch input ',batch_input[-1])
+            # y = [int(i) for i in batch_input[-1][0]] #not using the last input: y
             pred_proba = self.network(*feed_input)
-            pred_proba = pred_proba.data.cpu()
-            prediction += list(pred_proba)
+            pred_proba_start = pred_proba[0]
+            pred_proba_end = pred_proba[1]
+            pred_proba_start = pred_proba_start.data.cpu()
+            pred_proba_end = pred_proba_end.data.cpu()
+
+            #### prendre le max des probas
+            prediction += [pred_proba_start,pred_proba_end]
         return prediction
 
     def _iter_data(self, data):
