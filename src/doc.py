@@ -15,7 +15,6 @@ class Example:
         self.q_pos = input_dict['q_pos']
         assert len(self.q_pos) == len(self.question.split()), (self.q_pos, self.question)
         assert len(self.d_pos) == len(self.passage.split())
-        
         self.features = np.stack([input_dict['in_q'], input_dict['in_c'], \
                                     input_dict['lemma_in_q'], input_dict['lemma_in_c'], \
                                     input_dict['tf'],np.array(input_dict['d_positions']).astype(int).T[0],np.array(input_dict['d_positions']).astype(int).T[1]], 1)
@@ -64,11 +63,11 @@ def batchify(batch_data):
     p_pos = _to_indices_and_mask([ex.d_pos_tensor for ex in batch_data], need_mask=False)
     p_ner = _to_indices_and_mask([ex.d_ner_tensor for ex in batch_data], need_mask=False)
     p_q_relation = _to_indices_and_mask([ex.p_q_relation for ex in batch_data], need_mask=False)
-    p_c_relation = _to_indices_and_mask([ex.p_c_relation for ex in batch_data], need_mask=False)
+    #p_c_relation = _to_indices_and_mask([ex.p_c_relation for ex in batch_data], need_mask=False)
     q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data])
     q_pos = _to_indices_and_mask([ex.q_pos_tensor for ex in batch_data], need_mask=False)
-    choices = [ex.choice.split() for ex in batch_data]
-    c, c_mask = _to_indices_and_mask([ex.c_tensor for ex in batch_data])
+    #choices = [ex.choice.split() for ex in batch_data]
+    #c, c_mask = _to_indices_and_mask([ex.c_tensor for ex in batch_data])
     f_tensor = _to_feature_tensor([ex.features for ex in batch_data])
-    y = torch.FloatTensor([ex.label for ex in batch_data])
+    y = torch.FloatTensor([ex.y for ex in batch_data])
     return p, p_pos, p_ner, p_mask, q, q_pos, q_mask, c, c_mask, f_tensor, p_q_relation, p_c_relation, y
