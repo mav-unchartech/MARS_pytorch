@@ -15,7 +15,7 @@ class Example:
         self.q_pos = input_dict['q_pos']
         assert len(self.q_pos) == len(self.question.split()), (self.q_pos, self.question)
         assert len(self.d_pos) == len(self.passage.split())
-        print(np.array(input_dict['d_positions']).astype(int).T[0])
+        
         self.features = np.stack([input_dict['in_q'], input_dict['in_c'], \
                                     input_dict['lemma_in_q'], input_dict['lemma_in_c'], \
                                     input_dict['tf'],np.array(input_dict['d_positions']).astype(int).T[0],np.array(input_dict['d_positions']).astype(int).T[1]], 1)
