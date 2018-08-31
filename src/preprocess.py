@@ -1,3 +1,10 @@
+
+# coding: utf-8
+
+# In[ ]:
+
+
+
 import os
 import sys
 import spacy
@@ -5,8 +12,9 @@ import copy
 import json
 import math
 import wikiwords
-
 from collections import Counter
+
+
 
 class Tokens(object):
     """A class to represent a list of tokenized text."""
@@ -231,40 +239,70 @@ def compute_features(d_dict, q_dict, c_dict):
         'p_c_relation': p_c_relation
     }
 
-def get_example(d_id, q_id, c_id, d_dict, q_dict, c_dict, label):
+def get_example(q_id,d_dict, q_dict, c_dict, y):
     return {
-            'id': d_id + '_' + q_id + '_' + c_id,
+            'id': q_id ,
             'd_words': ' '.join(d_dict['words']),
             'd_pos': d_dict['pos'],
             'd_ner': d_dict['ner'],
+            'd_positions' : d_dict['offsets'],
             'q_words': ' '.join(q_dict['words']),
             'q_pos': q_dict['pos'],
-            'c_words': ' '.join(c_dict['words']),
-            'label': label
+#             'c_words': ' '.join(c_dict['words']),
+            'y': y
         }
+
+
+def convert_idx(text, tokens):
+    current = 0
+    spans = []
+    for token in tokens:
+        current = text.find(token, current)
+        if current < 0:
+            print("Token {} cannot be found".format(token))
+            raise Exception()
+        spans.append((current, current + len(token)))
+        current += len(token)
+    return spans
+
 
 def preprocess_dataset(path, is_test_set=False):
     writer = open(path.replace('.json', '') + '-processed.json', 'w', encoding='utf-8')
     ex_cnt = 0
-    for obj in json.load(open(path, 'r', encoding='utf-8'))['data']['instance']:
-        if not obj['questions']:
-            continue
-        d_dict = tokenize(obj['text'])
-        d_id = path + '_' + obj['@id']
-        try:
-            qs = [q for q in obj['questions']['question']]
-            dummy = qs[0]['@text']
-        except:
-            # some passages have only one question
-            qs = [obj['questions']['question']]
-        for q in qs:
-            q_dict = tokenize(q['@text'])
-            q_id = q['@id']
-            for ans in q['answer']:
-                c_dict = tokenize(ans['@text'])
-                label = int(ans['@correct'].lower() == 'true') if not is_test_set else -1
-                c_id = ans['@id']
-                example = get_example(d_id, q_id, c_id, d_dict, q_dict, c_dict, label)
+    examples = []
+    eval_examples = {}
+    total = 0
+    for page in json.load(open(path, 'r',encoding = 'utf-8'))['data']:
+    #for obj in json.load(open(path, 'r', encoding='utf-8'))['data']:
+        for obj in page['paragraphs']:
+        #### If there is no questions, I pass 
+            if not obj['qas']:
+                continue
+        ### Else, let's address context first
+            context = obj["context"].replace("''", '" ').replace("``", '" ')
+            d_dict = tokenize(context)
+
+            try:
+                qs = [q for q in obj['qas']]
+                dummy = qs[0]['question']
+            except:
+                # some passages have only one question
+                qs = [obj['qas']['question']]   
+            for q in qs:
+                total += 1
+                q_dict = tokenize(q['question'])
+                q_id = q['id']
+                ans = q['answers'][0]
+                for answer in q['answers']:
+                    if len(answer['text']) > len(ans['text']) :
+                        ans = answer
+
+                c_dict = tokenize(ans['text'])
+                y1 = ans['answer_start']
+                y2 = ans['answer_start']+len(ans['text'])
+                y = [y1,y2] if not is_test_set else -1
+
+                example = get_example(q_id, d_dict, q_dict, c_dict, y)
                 example.update(compute_features(d_dict, q_dict, c_dict))
                 writer.write(json.dumps(example))
                 writer.write('\n')
@@ -311,9 +349,9 @@ def preprocess_race_dataset(d):
                 c_dict = tokenize(choice)
                 if not is_option_ok(c_dict['words']):
                     continue
-                label = int(c_id == ans)
+                y = int(c_id == ans)
                 c_id = str(c_id)
-                example = get_example(d_id, q_id, c_id, d_dict, q_dict, c_dict, label)
+                example = get_example(d_id, q_id, c_id, d_dict, q_dict, c_dict, y)
                 example.update(compute_features(d_dict, q_dict, c_dict))
                 writer.write(json.dumps(example))
                 writer.write('\n')
@@ -343,13 +381,20 @@ def preprocess_conceptnet(path):
         writer.write('%s %s %s\n' % (relation, w1, w2))
     writer.close()
 
+
 if __name__ == '__main__':
+    print('start')
     if len(sys.argv) > 1 and sys.argv[1] == 'conceptnet':
         preprocess_conceptnet('conceptnet-assertions-5.5.5.csv')
         exit(0)
     init_tokenizer()
-    preprocess_dataset('./data/trial-data.json')
-    preprocess_dataset('./data/dev-data.json')
-    preprocess_dataset('./data/train-data.json')
-    preprocess_dataset('./data/test-data.json', is_test_set=True)
+    print('4')
+    preprocess_dataset('../data/dev-v1.1.json')
+    
+    
+#     preprocess_dataset('./data/trial-data.json')
+#     preprocess_dataset('../data/dev-data.json')
+#     preprocess_dataset('./data/train-data.json')
+#     preprocess_dataset('./data/test-data.json', is_test_set=True)
     # preprocess_race_dataset('./data/RACE/')
+
