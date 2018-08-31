@@ -63,11 +63,8 @@ def batchify(batch_data):
     p_pos = _to_indices_and_mask([ex.d_pos_tensor for ex in batch_data], need_mask=False)
     p_ner = _to_indices_and_mask([ex.d_ner_tensor for ex in batch_data], need_mask=False)
     p_q_relation = _to_indices_and_mask([ex.p_q_relation for ex in batch_data], need_mask=False)
-    p_c_relation = _to_indices_and_mask([ex.p_c_relation for ex in batch_data], need_mask=False)
     q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data])
     q_pos = _to_indices_and_mask([ex.q_pos_tensor for ex in batch_data], need_mask=False)
-    choices = [ex.choice.split() for ex in batch_data]
-    c, c_mask = _to_indices_and_mask([ex.c_tensor for ex in batch_data])
     f_tensor = _to_feature_tensor([ex.features for ex in batch_data])
     y = torch.FloatTensor([ex.label for ex in batch_data])
-    return p, p_pos, p_ner, p_mask, q, q_pos, q_mask, c, c_mask, f_tensor, p_q_relation, p_c_relation, y
+    return p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation, y

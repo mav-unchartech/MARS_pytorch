@@ -230,12 +230,17 @@ class BilinearSeqAttn(nn.Module):
             alpha = batch * len
         """
         Wy = self.linear(y) if self.linear is not None else y
+        print('Wyunsqueezed', Wy.unsqueeze(2).size())
+        print('x', x.size())
+        print('x_mask', x_mask.size())
+        print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy)
         else:
             alpha = xWy.exp()
+        print('alpha', alpha.size())
         return alpha
 
 
@@ -263,6 +268,18 @@ class LinearSeqAttn(nn.Module):
         alpha = F.softmax(scores)
         return alpha
 
+class NeuralNet(nn.Module):
+    def __init__(self, input_size, hidden_size, num_classes):
+        super(NeuralNet, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, num_classes)
+
+    def forward(self, x):
+        out = self.fc1(x)
+        out = self.relu(out)
+        out = self.fc2(out)
+        return out
 
 # ------------------------------------------------------------------------------
 # Functional

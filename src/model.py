@@ -57,7 +57,7 @@ class Model:
             y = batch_input[-1]
             pred_proba = self.network(*feed_input)
 
-            loss = F.binary_cross_entropy(pred_proba, y)
+            loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
             self.optimizer.zero_grad()
             loss.backward()
 
@@ -130,7 +130,7 @@ class Model:
         self.network.eval()
         prediction = []
         for batch_input in self._iter_data(test_data):
-            feed_input = [x for x in batch_input[:-1]]
+            feed_input = [x for x in batch_input[:-1]] #not using the last input: y
             pred_proba = self.network(*feed_input)
             pred_proba = pred_proba.data.cpu()
             prediction += list(pred_proba)
