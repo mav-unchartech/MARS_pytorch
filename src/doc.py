@@ -60,6 +60,8 @@ def _to_feature_tensor(features):
 
 def batchify(batch_data):
     p, p_mask = _to_indices_and_mask([ex.d_tensor for ex in batch_data])
+    print('p_mask : ')
+    print(p_mask.size())
     p_pos = _to_indices_and_mask([ex.d_pos_tensor for ex in batch_data], need_mask=False)
     p_ner = _to_indices_and_mask([ex.d_ner_tensor for ex in batch_data], need_mask=False)
     p_q_relation = _to_indices_and_mask([ex.p_q_relation for ex in batch_data], need_mask=False)

@@ -25,7 +25,7 @@ class TriAN(nn.Module):
         self.p_q_emb_match = layers.SeqAttnMatch(self.embedding_dim)
 
         # Input size to RNN: word emb + question emb + pos emb + ner emb + manual features
-        doc_input_size = 2 * self.embedding_dim + args.pos_emb_dim + args.ner_emb_dim + 5 + args.rel_emb_dim
+        doc_input_size = 2 * self.embedding_dim + args.pos_emb_dim + args.ner_emb_dim + 7 + args.rel_emb_dim
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -70,10 +70,13 @@ class TriAN(nn.Module):
                                                 num_classes=doc_hidden_size)
 
         # Single map proba
+
+        ### ??????????????????????????????????????????????????
         self.p_q_bilinear = nn.Linear(doc_hidden_size, question_hidden_size)
         self.q_p_bilinear = nn.Linear(question_hidden_size, doc_hidden_size)
 
         # Proba attention
+        print('problem')
         self.start_end_attn = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=doc_hidden_size)
         self.end_start_attn = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=doc_hidden_size)
 
@@ -117,16 +120,18 @@ class TriAN(nn.Module):
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
+        print('q_hidden_end', q_hidden_end.size())
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
-        #print('p_hidden_end', p_hidden_end.size())
+        print('p_hidden_end', p_hidden_end.size())
         ####
 
         #### START SINGLE PROBA MAP
         logits_start = self.p_q_bilinear(p_hidden_start) * q_hidden_start
-        #print('logits_start', logits_start, logits_start.size())
+        print('logits_start', logits_start, logits_start.size())
         single_map_proba_start = F.sigmoid(logits_start)
+        print('doc hidden size : ', doc_hidden_size)
         #print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
         ####
 
@@ -137,7 +142,7 @@ class TriAN(nn.Module):
         ####
         #print('p_mask',p_mask, p_mask.size())
 
-        map_mask = torch.ByteTensor(1, 192).fill_(1)
+         #map_mask = torch.ByteTensor(1, 192).fill_(1)
         #### PASSAGE-QUESTION ATTENTION
         attn_map_start = self.start_end_attn(single_map_proba_start.unsqueeze(1), single_map_proba_end, map_mask)
         attn_map_end = self.end_start_attn(single_map_proba_end.unsqueeze(1), single_map_proba_start, map_mask)

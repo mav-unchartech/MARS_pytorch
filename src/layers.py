@@ -23,6 +23,8 @@ class StackedBRNN(nn.Module):
         self.num_layers = num_layers
         self.concat_layers = concat_layers
         self.rnns = nn.ModuleList()
+        print('hidden size: ' + str(hidden_size))
+        print('input_size: ' + str(input_size))
         for i in range(num_layers):
             input_size = input_size if i == 0 else 2 * hidden_size
             self.rnns.append(rnn_type(input_size, hidden_size,
@@ -57,10 +59,13 @@ class StackedBRNN(nn.Module):
         """Faster encoding that ignores any padding."""
         # Transpose batch and sequence dims
         x = x.transpose(0, 1)
-
+        print(x)
+        print(x.size())
         # Encode all layers
         outputs = [x]
         for i in range(self.num_layers):
+            print(' num layers :')
+            print(self.num_layers)
             rnn_input = outputs[-1]
 
             # Apply dropout to hidden input
@@ -69,6 +74,8 @@ class StackedBRNN(nn.Module):
                                       p=self.dropout_rate,
                                       training=self.training)
             # Forward
+            print(rnn_input)
+            print(self.rnns)
             rnn_output = self.rnns[i](rnn_input)[0]
             outputs.append(rnn_output)
 
@@ -229,12 +236,16 @@ class BilinearSeqAttn(nn.Module):
         Output:
             alpha = batch * len
         """
+
         Wy = self.linear(y) if self.linear is not None else y
+        print('Wy : ',Wy.size())
         print('Wyunsqueezed', Wy.unsqueeze(2).size())
         print('x', x.size())
         print('x_mask', x_mask.size())
         print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
+
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
+        print('squeezed : ', xWy)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy)
