@@ -17,10 +17,10 @@ random.seed(args.seed)
 if __name__ == '__main__':
 
     build_vocab()
-    train_data = [load_data('./data/trial-data-processed.json')[0]]
-    #train_data += load_data('./data/train-data-processed.json')
-    dev_data = load_data('./data/dev-data-processed.json')
-
+    train_data = load_data('../data/dev-v1.1-processed.json')
+    #train_data += load_data('../data/train-data-processed.json')
+    #dev_data = load_data('../data/dev-data-processed.json')
+    dev_data = train_data
 
     if args.test_mode:
         # use validation data as training data
@@ -29,14 +29,14 @@ if __name__ == '__main__':
     model = Model(args)
 
     best_dev_acc = 0.0
-    os.makedirs('./checkpoint', exist_ok=True)
-    checkpoint_path = './checkpoint/%d-%s.mdl' % (args.seed, datetime.now().isoformat())
+    os.makedirs('../checkpoint', exist_ok=True)
+    checkpoint_path = '../checkpoint/%d-%s.mdl' % (args.seed, datetime.now().isoformat())
     print('Trained model will be saved to %s' % checkpoint_path)
 
     for i in range(args.epoch):
         print('Epoch %d...' % i)
         if i == 0:
-            dev_acc = model.evaluate(dev_data)
+            dev_acc = 0#model.evaluate(dev_data)
             print('Dev accuracy: %f' % dev_acc)
         start_time = time.time()
         np.random.shuffle(train_data)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
         if dev_acc > best_dev_acc:
             best_dev_acc = dev_acc
-            os.system('mv ./data/output.log ./data/best-dev.log')
+            os.system('mv ../data/output.log ../data/best-dev.log')
             model.save(checkpoint_path)
         elif args.test_mode:
             model.save(checkpoint_path)

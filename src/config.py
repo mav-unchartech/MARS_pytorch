@@ -32,7 +32,6 @@ parser.add_argument('--seed', type=int, default=1234, help='random seed')
 parser.add_argument('--test_mode', type='bool', default=False, help='In test mode, validation data will be used for training')
 args = parser.parse_args()
 
-print(args)
 
 if args.pretrained:
     assert all(os.path.exists(p) for p in args.pretrained.split(',')), 'Checkpoint %s does not exist.' % args.pretrained

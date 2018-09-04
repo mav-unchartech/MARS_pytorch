@@ -25,7 +25,7 @@ class TriAN(nn.Module):
         self.p_q_emb_match = layers.SeqAttnMatch(self.embedding_dim)
 
         # Input size to RNN: word emb + question emb + pos emb + ner emb + manual features
-        doc_input_size = 2 * self.embedding_dim + args.pos_emb_dim + args.ner_emb_dim + 7 + args.rel_emb_dim
+        doc_input_size = 2 * self.embedding_dim + args.pos_emb_dim + args.ner_emb_dim + 5 + args.rel_emb_dim
 
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
@@ -62,14 +62,6 @@ class TriAN(nn.Module):
 
         self.q_self_attn_end = layers.LinearSeqAttn(question_hidden_size)
         self.p_q_attn_end = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=question_hidden_size)
-
-
-
-        # Single map proba
-
-        ### ??????????????????????????????????????????????????
-
-        # Proba attention
 
 
     def forward(self, p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation):
@@ -119,49 +111,35 @@ class TriAN(nn.Module):
         # print('p_hidden_end', p_hidden_end.size())
         ####
 
-
-        print('problem')
-        print(self.doc_hidden_size)
-        print(self.question_hidden_size)
-        print(p_mask.size()[1])
-        p_q_bilinear_start = nn.Bilinear(self.doc_hidden_size,  self.question_hidden_size, p_mask.size()[1] )
-        p_q_bilinear_end = nn.Bilinear(self.doc_hidden_size, self.question_hidden_size,  p_mask.size()[1] )
-
+        p_q_bilinear_start = nn.Bilinear(self.doc_hidden_size,
+                                        self.question_hidden_size,
+                                        p_mask.size()[1])
+        p_q_bilinear_end = nn.Bilinear(self.doc_hidden_size,
+                                        self.question_hidden_size,
+                                        p_mask.size()[1])
 
         #### START SINGLE PROBA MAP
         logits_start = p_q_bilinear_start(p_hidden_start,q_hidden_start)
         # print('logits_start', logits_start, logits_start.size())
-        single_map_proba_start = F.sigmoid(logits_start)
-
+        single_map_proba_start = torch.sigmoid(logits_start)
         # print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
         ####
 
         #### END SINGLE PROBA MAP
         logits_end = p_q_bilinear_end(p_hidden_end,q_hidden_end)
-        single_map_proba_end = F.sigmoid(logits_end)
-        # print('single_map_proba_end', single_map_proba_end.size())
-        #print('p_mask',p_mask, p_mask.size())
-
+        single_map_proba_end = torch.sigmoid(logits_end)
         ####
 
 
         #### Definir la taille des outputs, qui depend du text)
-
-
         self.start_end_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
         self.end_start_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
-
-
-
-
-
 
         #### PASSAGE-QUESTION ATTENTION
         attn_map_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
         attn_map_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
 
-        ####
-        # Neural Net
+        #### Define Neural Net
         self.feedforward_start = layers.NeuralNet(input_size=p_mask.size()[1],
                                                 hidden_size=p_mask.size()[1],
                                                 num_classes=p_mask.size()[1])
@@ -174,6 +152,6 @@ class TriAN(nn.Module):
         ff_map_end = self.feedforward_end(attn_map_end)
 
         #### Calcul Probas
-        proba_start = F.softmax(ff_map_start)
-        probas_end = F.softmax(ff_map_end)
-        return proba_start, probas_end
+        probas_start = F.softmax(ff_map_start, dim = 0)
+        probas_end = F.softmax(ff_map_end, dim = 0)
+        return probas_start, probas_end

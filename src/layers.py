@@ -23,8 +23,8 @@ class StackedBRNN(nn.Module):
         self.num_layers = num_layers
         self.concat_layers = concat_layers
         self.rnns = nn.ModuleList()
-        print('hidden size: ' + str(hidden_size))
-        print('input_size: ' + str(input_size))
+        # print('hidden size: ' + str(hidden_size))
+        # print('input_size: ' + str(input_size))
         for i in range(num_layers):
             input_size = input_size if i == 0 else 2 * hidden_size
             self.rnns.append(rnn_type(input_size, hidden_size,
@@ -60,7 +60,7 @@ class StackedBRNN(nn.Module):
         # Transpose batch and sequence dims
         x = x.transpose(0, 1)
 
-        print('x size ',x.size())
+
         # Encode all layers
         outputs = [x]
         for i in range(self.num_layers):
@@ -199,7 +199,8 @@ class SeqAttnMatch(nn.Module):
         scores.data.masked_fill_(y_mask.data, -float('inf'))
 
         # Normalize with softmax
-        alpha_flat = F.softmax(scores.view(-1, y.size(1)))
+        #print('before softmax : ', scores.view(-1, y.size(1)))
+        alpha_flat = F.softmax(scores.view(-1, y.size(1)), dim=0)
         alpha = alpha_flat.view(-1, x.size(1), y.size(1))
 
         # Take weighted average
@@ -246,7 +247,8 @@ class BilinearSeqAttn(nn.Module):
         # print('squeezed : ', xWy)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
-            alpha = F.softmax(xWy)
+            #print('xWy : ', xWy)
+            alpha = F.softmax(xWy, dim = 0)
         else:
             alpha = xWy.exp()
         # print('alpha', alpha.size())
@@ -298,7 +300,7 @@ class BilinearProbaAttn(nn.Module):
         xWy = x.mm(Wy)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
-            alpha = F.softmax(xWy)
+            alpha = F.softmax(xWy, dim = 0)
         else:
             alpha = xWy.exp()
         # print(alpha.size())
@@ -332,7 +334,7 @@ class LinearSeqAttn(nn.Module):
         x_flat = x.view(-1, x.size(-1))
         scores = self.linear(x_flat).view(x.size(0), x.size(1))
         scores.data.masked_fill_(x_mask.data, -float('inf'))
-        alpha = F.softmax(scores)
+        alpha = F.softmax(scores, dim = 0)
         return alpha
 
 class NeuralNet(nn.Module):

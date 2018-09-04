@@ -193,7 +193,7 @@ def gen_debug_file(data, prediction):
 def gen_final_submission(data):
     import glob
     proba_list = []
-    for f in glob.glob('./out-*.txt'):
+    for f in glob.glob('../out-*.txt'):
         print('Process %s...' % f)
         lines = open(f, 'r', encoding='utf-8').readlines()
         lines = map(lambda s: s.strip(), lines)

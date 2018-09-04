@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import torch.optim.lr_scheduler as lr_scheduler
 import numpy as np
-
+import math
 from utils import vocab
 from doc import batchify
 from mars import TriAN
@@ -54,26 +54,30 @@ class Model:
         iter_cnt, num_iter = 0, (len(train_data) + self.batch_size - 1) // self.batch_size
         for batch_input in self._iter_data(train_data):
             feed_input = [x for x in batch_input[:-1]]
-            # y = batch_input[-1]
-            y = [int(i) for i in batch_input[-1][0]]
-            y1 = y[0]
-            y2 = y[1]
+            y = batch_input[-1]
+            y_start = y[0][0]
+            y_end = y[0][1]
+            #y_end = [int(i) for i in batch_input[-1][1]]
+            #y_start = [int(i) for i in batch_input[-1][0]]
+            y_start = y[0][0]
+            y_end = y[0][1]
             pred_proba = self.network(*feed_input)
             pred_proba_start = pred_proba[0]
             pred_proba_end = pred_proba[1]
-            pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
-            pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
+
+            # pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
+            # pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
 
             # loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
-
-            loss1 = F.nll_loss(pred_proba_start, y1, size_average=True)
-            loss2 = F.nll_loss(pred_proba_end, y2, size_average=True)
+            #loss = -(math.log(pred_proba_start[y1])+math.log(pred_proba_start[y2]))  size_average=True
+            loss1 = F.nll_loss(pred_proba_start, y_start, size_average=True)
+            loss2 = F.nll_loss(pred_proba_end, y_end, size_average=True)
             loss = (loss1 + loss2) / 2
 
             self.optimizer.zero_grad()
             loss.backward()
 
-            torch.nn.utils.clip_grad_norm(self.network.parameters(), self.args.grad_clipping)
+            torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.args.grad_clipping)
 
             # Update parameters
             self.optimizer.step()
@@ -86,56 +90,24 @@ class Model:
         self.scheduler.step()
         print('LR:', self.scheduler.get_lr()[0])
 
-    def evaluate(self, dev_data, debug=False, eval_train=False):
+    def evaluate(self, dev_data):
         if len(dev_data) == 0:
             return -1.0
         self.network.eval()
-        correct, total, prediction, gold = 0, 0, [], []
-        dev_data = sorted(dev_data, key=lambda ex: ex.id)
+        from sklearn.metrics import f1_score
+        f1_scores = []
         for batch_input in self._iter_data(dev_data):
-            feed_input = [x for x in batch_input[:-1]]
-            y = batch_input[-1].data.cpu().numpy()
-            pred_proba = self.network(*feed_input)
-            pred_proba = pred_proba.data.cpu()
-            prediction += list(pred_proba)
-            gold += [int(label) for label in y]
-            assert(len(prediction) == len(gold))
+                feed_input = [x for x in batch_input[:-1]]
+                pred_proba = self.network(*feed_input)
+                print(pred_proba)
+                pred_proba_start = pred_proba[0]
+                pred_proba_end = pred_proba[1]
+                print(pred_proba_start)
+                for i, data in enumerate(feed_input):
+                    truth = map_padding(data.y_start, data.y_end)
+                    f1_scores += f1_score(truth, prediction[i])
+        return sum(f1_scores)/len(f1_scores)
 
-        if eval_train:
-            prediction = [1 if p > 0.5 else 0 for p in prediction]
-            acc = sum([1 if y1 == y2 else 0 for y1, y2 in zip(prediction, gold)]) / len(gold)
-            return acc
-
-        cur_pred, cur_gold, cur_choices = [], [], []
-        if debug:
-            writer = open('./data/output.log', 'w', encoding='utf-8')
-        for i, ex in enumerate(dev_data):
-            if i + 1 == len(dev_data):
-                cur_pred.append(prediction[i])
-                cur_gold.append(gold[i])
-                cur_choices.append(ex.choice)
-            if (i > 0 and ex.id[:-1] != dev_data[i - 1].id[:-1]) or (i + 1 == len(dev_data)):
-                py, gy = np.argmax(cur_pred), np.argmax(cur_gold)
-                if debug:
-                    writer.write('Passage: %s\n' % dev_data[i - 1].passage)
-                    writer.write('Question: %s\n' % dev_data[i - 1].question)
-                    for idx, choice in enumerate(cur_choices):
-                        writer.write('*' if idx == gy else ' ')
-                        writer.write('%s  %f\n' % (choice, cur_pred[idx]))
-                    writer.write('\n')
-                if py == gy:
-                    correct += 1
-                total += 1
-                cur_pred, cur_gold, cur_choices = [], [], []
-            cur_pred.append(prediction[i])
-            cur_gold.append(gold[i])
-            cur_choices.append(ex.choice)
-
-        acc = 1.0 * correct / total
-        if debug:
-            writer.write('Accuracy: %f\n' % acc)
-            writer.close()
-        return acc
 
     def predict(self, test_data):
         # DO NOT SHUFFLE test_data
@@ -144,6 +116,7 @@ class Model:
         for batch_input in self._iter_data(test_data):
             feed_input = [x for x in batch_input[:-1]]
             # print('batch input ',batch_input[-1])
+
             # y = [int(i) for i in batch_input[-1][0]] #not using the last input: y
             pred_proba = self.network(*feed_input)
             pred_proba_start = pred_proba[0]

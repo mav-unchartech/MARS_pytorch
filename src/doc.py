@@ -17,10 +17,12 @@ class Example:
         assert len(self.d_pos) == len(self.passage.split())
         self.features = np.stack([input_dict['in_q'], input_dict['in_c'], \
                                     input_dict['lemma_in_q'], input_dict['lemma_in_c'], \
-                                    input_dict['tf'],np.array(input_dict['d_positions']).astype(int).T[0],np.array(input_dict['d_positions']).astype(int).T[1]], 1)
+                                    input_dict['tf']], 1)
         assert len(self.features) == len(self.passage.split())
+        self.y_start = input_dict['y_start']
+        self.y_end = input_dict['y_end']
         self.y = input_dict['y']
-        self.d_positions = np.array(input_dict['d_positions']).T[0]
+        #self.d_positions = np.array(input_dict['d_positions'])
         self.d_tensor = torch.LongTensor([vocab[w] for w in self.passage.split()])
         self.q_tensor = torch.LongTensor([vocab[w] for w in self.question.split()])
         #self.c_tensor = torch.LongTensor([vocab[w] for w in self.choice.split()])
@@ -58,6 +60,15 @@ def _to_feature_tensor(features):
         f_tensor[i, :len(f), :].copy_(f)
     return f_tensor
 
+def _out_tensor(features):
+    mx_len = max([len(f[0]) for f in features])
+    batch_size = len(features)
+    f_dim = len(features[0])
+    f_tensor = torch.FloatTensor(batch_size, f_dim, mx_len).fill_(0)
+    for i, f in enumerate(features):
+        f_tensor[i, :,:len(f[0])].copy_(torch.FloatTensor(f))
+    return f_tensor
+
 def batchify(batch_data):
     p, p_mask = _to_indices_and_mask([ex.d_tensor for ex in batch_data])
     p_pos = _to_indices_and_mask([ex.d_pos_tensor for ex in batch_data], need_mask=False)
@@ -66,5 +77,7 @@ def batchify(batch_data):
     q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data])
     q_pos = _to_indices_and_mask([ex.q_pos_tensor for ex in batch_data], need_mask=False)
     f_tensor = _to_feature_tensor([ex.features for ex in batch_data])
-    y = torch.FloatTensor([ex.y for ex in batch_data])
+    #y_start = torch.LongTensor([ex.y_start for ex in batch_data])
+    #y_end = torch.LongTensor([ex.y_end for ex in batch_data])
+    y = _out_tensor([ex.y for ex in batch_data])
     return p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation, y

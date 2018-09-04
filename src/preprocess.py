@@ -1,10 +1,4 @@
-
 # coding: utf-8
-
-# In[ ]:
-
-
-
 import os
 import sys
 import spacy
@@ -239,16 +233,18 @@ def compute_features(d_dict, q_dict, c_dict):
         'p_c_relation': p_c_relation
     }
 
-def get_example(q_id,d_dict, q_dict, c_dict, y):
+def get_example(q_id,d_dict, q_dict, c_dict, y_start,y_end,y):
     return {
             'id': q_id ,
             'd_words': ' '.join(d_dict['words']),
             'd_pos': d_dict['pos'],
             'd_ner': d_dict['ner'],
-            'd_positions' : d_dict['offsets'],
+            #'d_positions' : d_dict['offsets'],
             'q_words': ' '.join(q_dict['words']),
             'q_pos': q_dict['pos'],
 #             'c_words': ' '.join(c_dict['words']),
+            'y_start' : y_start,
+            'y_end' : y_end,
             'y': y
         }
 
@@ -275,7 +271,7 @@ def preprocess_dataset(path, is_test_set=False):
     for page in json.load(open(path, 'r',encoding = 'utf-8'))['data']:
     #for obj in json.load(open(path, 'r', encoding='utf-8'))['data']:
         for obj in page['paragraphs']:
-        #### If there is no questions, I pass 
+        #### If there is no questions, I pass
             if not obj['qas']:
                 continue
         ### Else, let's address context first
@@ -287,7 +283,7 @@ def preprocess_dataset(path, is_test_set=False):
                 dummy = qs[0]['question']
             except:
                 # some passages have only one question
-                qs = [obj['qas']['question']]   
+                qs = [obj['qas']['question']]
             for q in qs:
                 total += 1
                 q_dict = tokenize(q['question'])
@@ -302,7 +298,11 @@ def preprocess_dataset(path, is_test_set=False):
                 y2 = ans['answer_start']+len(ans['text'])
                 y = [y1,y2] if not is_test_set else -1
 
-                example = get_example(q_id, d_dict, q_dict, c_dict, y)
+                ### Answers vectors
+                y_start = [int(y1 in i) for i in d_dict['offsets']]
+                y_end = [int(y2 in i) for i in d_dict['offsets']]
+                y = [y_start, y_end]
+                example = get_example(q_id, d_dict, q_dict, c_dict, y_start, y_end, y)
                 example.update(compute_features(d_dict, q_dict, c_dict))
                 writer.write(json.dumps(example))
                 writer.write('\n')
@@ -328,7 +328,7 @@ def preprocess_race_dataset(d):
     def is_option_ok(words):
         s = ' '.join(words).lower()
         return s != 'all of the above' and s != 'none of the above'
-    writer = open('./data/race-processed.json', 'w', encoding='utf-8')
+    writer = open('../data/race-processed.json', 'w', encoding='utf-8')
     ex_cnt = 0
     for obj in _get_race_obj(d):
         d_dict = tokenize(obj['article'].replace('\n', ' ').replace('--', ' '))
@@ -390,11 +390,10 @@ if __name__ == '__main__':
     init_tokenizer()
     print('4')
     preprocess_dataset('../data/dev-v1.1.json')
-    
-    
-#     preprocess_dataset('./data/trial-data.json')
-#     preprocess_dataset('../data/dev-data.json')
-#     preprocess_dataset('./data/train-data.json')
-#     preprocess_dataset('./data/test-data.json', is_test_set=True)
-    # preprocess_race_dataset('./data/RACE/')
 
+
+#preprocess_dataset('../data/trial-data.json')
+#preprocess_dataset('../data/dev-data.json')
+#preprocess_dataset('../data/train-data.json')
+#preprocess_dataset('../data/test-data.json', is_test_set=True)
+#preprocess_race_dataset('../data/RACE/')
