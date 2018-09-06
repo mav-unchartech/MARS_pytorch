@@ -268,13 +268,13 @@ class BilinearProbaAttn(nn.Module):
     Optionally don't normalize output weights.
     """
 
-    def __init__(self, x_size, y_size, identity=False, normalize=True):
+    def __init__(self, z_size, identity=False, normalize=True):
         super(BilinearProbaAttn, self).__init__()
         self.normalize = normalize
 
         # If identity is true, we just use a dot product without transformation.
         if not identity:
-            self.linear = nn.Linear(x_size, y_size)
+            self.bilinear = nn.Bilinear(1, 1, z_size)
         else:
             self.linear = None
 
@@ -287,10 +287,8 @@ class BilinearProbaAttn(nn.Module):
         Output:
             alpha = batch * len
         """
-
-        Wy = self.linear(torch.transpose(y, 0, 1)) if self.linear is not None else transpose(y, 0, 1)
-        xWy = x.mm(torch.transpose(Wy, 0, 1))
-        #xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        xWy = self.bilinear(x.unsqueeze(2), y.unsqueeze(2))
+        xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, dim = 0)
         else:
@@ -323,7 +321,7 @@ class LinearSeqAttn(nn.Module):
         """
         x_flat = x.view(-1, x.size(-1))
         scores = self.linear(x_flat).view(x.size(0), x.size(1))
-        scores.data.masked_fill_(x_mask.data, -float('inf'))
+        scores.data.masked_fill_(x_mask.data, 0)
         alpha = F.softmax(scores, dim = 0)
         return alpha
 

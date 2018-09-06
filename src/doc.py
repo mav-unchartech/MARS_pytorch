@@ -36,8 +36,8 @@ class Example:
     def __str__(self):
         return 'Passage: %s\n Question: %s\n  Label: %d' % (self.passage, self.question, self.y)
 
-def _to_indices_and_mask(batch_tensor, need_mask=True):
-    mx_len = max([t.size(0) for t in batch_tensor])
+def _to_indices_and_mask(batch_tensor, need_mask=True, is_question=True ):
+    mx_len = 750#max([t.size(0) for t in batch_tensor])
     batch_size = len(batch_tensor)
     indices = torch.LongTensor(batch_size, mx_len).fill_(0)
     if need_mask:
@@ -52,7 +52,7 @@ def _to_indices_and_mask(batch_tensor, need_mask=True):
         return indices
 
 def _to_feature_tensor(features):
-    mx_len = max([f.size(0) for f in features])
+    mx_len = 750#max([f.size(0) for f in features])
     batch_size = len(features)
     f_dim = features[0].size(1)
     f_tensor = torch.FloatTensor(batch_size, mx_len, f_dim).fill_(0)
@@ -61,7 +61,7 @@ def _to_feature_tensor(features):
     return f_tensor
 
 def _out_tensor(features):
-    mx_len = max([len(f[0]) for f in features])
+    mx_len = 750#max([len(f[0]) for f in features])
     batch_size = len(features)
     f_dim = len(features[0])
     f_tensor = torch.FloatTensor(batch_size, f_dim, mx_len).fill_(0)

@@ -79,10 +79,8 @@ class TriAN(nn.Module):
                                         p_max_size)
 
         # Attention start end
-        self.start_end_attn = layers.BilinearProbaAttn(args.batch_size,
-                                                        p_max_size)
-        self.end_start_attn = layers.BilinearProbaAttn(args.batch_size,
-                                                        p_max_size)
+        self.start_end_attn = layers.BilinearProbaAttn(p_max_size)
+        self.end_start_attn = layers.BilinearProbaAttn(p_max_size)
 
         # Feed forward
         self.feedforward_start = layers.NeuralNet(p_max_size, p_max_size, p_max_size)
@@ -92,7 +90,6 @@ class TriAN(nn.Module):
         p_emb, q_emb = self.embedding(p), self.embedding(q)
         p_pos_emb, p_ner_emb, q_pos_emb = self.pos_embedding(p_pos), self.ner_embedding(p_ner), self.pos_embedding(q_pos)
         p_q_rel_emb = self.rel_embedding(p_q_relation)
-
         # Dropout on embeddings
         if self.args.dropout_emb > 0:
             p_emb = nn.functional.dropout(p_emb, p=self.args.dropout_emb, training=self.training)
@@ -104,51 +101,58 @@ class TriAN(nn.Module):
 
         p_q_weighted_emb = self.p_q_emb_match(p_emb, q_emb, q_mask)
         p_q_weighted_emb = nn.functional.dropout(p_q_weighted_emb, p=self.args.dropout_emb, training=self.training)
-        #print('p_q_weighted_emb', p_q_weighted_emb.size())
-
+        print('p_q_weighted_emb', p_q_weighted_emb.size())
         p_rnn_input = torch.cat([p_emb, p_q_weighted_emb, p_pos_emb, p_ner_emb, f_tensor, p_q_rel_emb], dim=2)
         q_rnn_input = torch.cat([q_emb, q_pos_emb], dim=2)
-        #print('p_rnn_input', p_rnn_input.size())
+        print('p_rnn_input', p_rnn_input.size())
 
         ##### BiLSTM layer
         p_hiddens = self.doc_rnn(p_rnn_input, p_mask)
         q_hiddens = self.question_rnn(q_rnn_input, q_mask)
-        #print('p_hiddens', p_hiddens.size())
+        print('p_hiddens', p_hiddens.size())
 
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens, q_mask)
         q_hidden_start = layers.weighted_avg(q_hiddens, q_merge_weights_start)
-        # print('p_hiddenf : ', p_hiddens.size())
+        print('p_hiddens : ', p_hiddens.size())
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start, p_mask)
         p_hidden_start = layers.weighted_avg(p_hiddens, p_merge_weights_start)
-        #print('p_hidden_start', p_hidden_start.size())
+        print('p_hidden_start', p_hidden_start.size())
 
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
-        # print('q_merge_weights_end', q_merge_weights_end.size())
+        print('q_merge_weights_end', q_merge_weights_end.size())
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
-        # print('p_hidden_end', p_hidden_end.size())
+        print('p_hidden_end', p_hidden_end.size())
 
         #### START SINGLE PROBA MAP
         logits_start = self.p_q_bilinear_start(p_hidden_start,q_hidden_start)
-        # print('logits_start', logits_start, logits_start.size())
+        print('logits_start', logits_start, logits_start.size())
+        logits_start.data.masked_fill_(p_mask.data, 0)
+        print('logits_start', logits_start, logits_start.size())
         single_map_proba_start = torch.sigmoid(logits_start)
-        # print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
+        print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
+        single_map_proba_start.data.masked_fill_(p_mask.data, 0)
 
         #### END SINGLE PROBA MAP
         logits_end = self.p_q_bilinear_end(p_hidden_end,q_hidden_end)
+        logits_end.data.masked_fill_(p_mask.data, 0)
         single_map_proba_end = torch.sigmoid(logits_end)
+        single_map_proba_end.data.masked_fill_(p_mask.data, 0)
 
         #### START END ATTENTION
         attn_map_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
         attn_map_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
+        print('attn_map_start', attn_map_start, attn_map_start.size())
 
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start)
         ff_map_end = self.feedforward_end(attn_map_end)
+        ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
+        ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
 
         #### OUTPUT
         probas_start = F.softmax(ff_map_start, dim = 0)
