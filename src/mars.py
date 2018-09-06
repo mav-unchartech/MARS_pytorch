@@ -27,6 +27,10 @@ class TriAN(nn.Module):
         # Input size to RNN: word emb + question emb + pos emb + ner emb + manual features
         doc_input_size = 2 * self.embedding_dim + args.pos_emb_dim + args.ner_emb_dim + 5 + args.rel_emb_dim
 
+        # Max passage size
+        p_max_size = args.p_max_size
+        self.p_max_size = p_max_size
+
         # RNN document encoder
         self.doc_rnn = layers.StackedBRNN(
             input_size=doc_input_size,
@@ -56,13 +60,33 @@ class TriAN(nn.Module):
         question_hidden_size = 2 * args.hidden_size
         self.question_hidden_size = question_hidden_size
         # print('p_mask : ' , doc_input_size)
-        # Answer merging
+
+        # Attention over passage and question
         self.q_self_attn_start = layers.LinearSeqAttn(question_hidden_size)
-        self.p_q_attn_start = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=question_hidden_size)
+        self.p_q_attn_start = layers.BilinearSeqAttn(x_size=doc_hidden_size,
+                                                    y_size=question_hidden_size)
 
         self.q_self_attn_end = layers.LinearSeqAttn(question_hidden_size)
-        self.p_q_attn_end = layers.BilinearSeqAttn(x_size=doc_hidden_size, y_size=question_hidden_size)
+        self.p_q_attn_end = layers.BilinearSeqAttn(x_size=doc_hidden_size,
+                                                y_size=question_hidden_size)
 
+        # Bilinear layer and sigmoid to proba
+        self.p_q_bilinear_start = nn.Bilinear(self.doc_hidden_size,
+                                        self.question_hidden_size,
+                                        p_max_size)
+        self.p_q_bilinear_end = nn.Bilinear(self.doc_hidden_size,
+                                        self.question_hidden_size,
+                                        p_max_size)
+
+        # Attention start end
+        self.start_end_attn = layers.BilinearProbaAttn(args.batch_size,
+                                                        p_max_size)
+        self.end_start_attn = layers.BilinearProbaAttn(args.batch_size,
+                                                        p_max_size)
+
+        # Feed forward
+        self.feedforward_start = layers.NeuralNet(p_max_size, p_max_size, p_max_size)
+        self.feedforward_end = layers.NeuralNet(p_max_size, p_max_size, p_max_size)
 
     def forward(self, p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation):
         p_emb, q_emb = self.embedding(p), self.embedding(q)
@@ -90,7 +114,6 @@ class TriAN(nn.Module):
         p_hiddens = self.doc_rnn(p_rnn_input, p_mask)
         q_hiddens = self.question_rnn(q_rnn_input, q_mask)
         #print('p_hiddens', p_hiddens.size())
-        ####
 
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens, q_mask)
@@ -99,7 +122,6 @@ class TriAN(nn.Module):
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start, p_mask)
         p_hidden_start = layers.weighted_avg(p_hiddens, p_merge_weights_start)
         #print('p_hidden_start', p_hidden_start.size())
-        ####
 
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
@@ -109,49 +131,26 @@ class TriAN(nn.Module):
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
         # print('p_hidden_end', p_hidden_end.size())
-        ####
-
-        p_q_bilinear_start = nn.Bilinear(self.doc_hidden_size,
-                                        self.question_hidden_size,
-                                        p_mask.size()[1])
-        p_q_bilinear_end = nn.Bilinear(self.doc_hidden_size,
-                                        self.question_hidden_size,
-                                        p_mask.size()[1])
 
         #### START SINGLE PROBA MAP
-        logits_start = p_q_bilinear_start(p_hidden_start,q_hidden_start)
+        logits_start = self.p_q_bilinear_start(p_hidden_start,q_hidden_start)
         # print('logits_start', logits_start, logits_start.size())
         single_map_proba_start = torch.sigmoid(logits_start)
         # print('single_map_proba_start', single_map_proba_start, single_map_proba_start.size())
-        ####
 
         #### END SINGLE PROBA MAP
-        logits_end = p_q_bilinear_end(p_hidden_end,q_hidden_end)
+        logits_end = self.p_q_bilinear_end(p_hidden_end,q_hidden_end)
         single_map_proba_end = torch.sigmoid(logits_end)
-        ####
 
-
-        #### Definir la taille des outputs, qui depend du text)
-        self.start_end_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
-        self.end_start_attn = layers.BilinearProbaAttn(x_size = p_mask.size()[1], y_size = p_mask.size()[1])
-
-        #### PASSAGE-QUESTION ATTENTION
+        #### START END ATTENTION
         attn_map_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
         attn_map_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
-
-        #### Define Neural Net
-        self.feedforward_start = layers.NeuralNet(input_size=p_mask.size()[1],
-                                                hidden_size=p_mask.size()[1],
-                                                num_classes=p_mask.size()[1])
-        self.feedforward_end = layers.NeuralNet(input_size=p_mask.size()[1],
-                                                hidden_size=p_mask.size()[1],
-                                                num_classes=p_mask.size()[1])
 
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start)
         ff_map_end = self.feedforward_end(attn_map_end)
 
-        #### Calcul Probas
+        #### OUTPUT
         probas_start = F.softmax(ff_map_start, dim = 0)
         probas_end = F.softmax(ff_map_end, dim = 0)
         return probas_start, probas_end

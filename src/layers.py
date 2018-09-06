@@ -274,7 +274,7 @@ class BilinearProbaAttn(nn.Module):
 
         # If identity is true, we just use a dot product without transformation.
         if not identity:
-            self.linear = nn.Linear(y_size, x_size)
+            self.linear = nn.Linear(x_size, y_size)
         else:
             self.linear = None
 
@@ -287,24 +287,14 @@ class BilinearProbaAttn(nn.Module):
         Output:
             alpha = batch * len
         """
-        x = x.unsqueeze(2)
-        x = x.squeeze(0)
-        Wy = self.linear(y) if self.linear is not None else y
 
-        # print('Wy : ',Wy.size())
-        # print('Wyunsqueezed', Wy.size())
-        # print('x', x.size())
-        # print('x_mask', x_mask.size())
-        # print('Wybmm', x.mm(Wy).size())
-
-        xWy = x.mm(Wy)
-        xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        Wy = self.linear(torch.transpose(y, 0, 1)) if self.linear is not None else transpose(y, 0, 1)
+        xWy = x.mm(torch.transpose(Wy, 0, 1))
+        #xWy.data.masked_fill_(x_mask.data, -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, dim = 0)
         else:
             alpha = xWy.exp()
-        # print(alpha.size())
-        # print('alpha', alpha)
         return alpha
 
 

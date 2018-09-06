@@ -133,6 +133,8 @@ class Model:
         for i in range(num_iter):
             start_idx = i * self.batch_size
             batch_data = data[start_idx:(start_idx + self.batch_size)]
+            if len(batch_data) < self.batch_size:
+                batch_data += (self.batch_size - len(batch_data)) * [batch_data[-1]]
             batch_input = batchify(batch_data)
 
             # Transfer to GPU
