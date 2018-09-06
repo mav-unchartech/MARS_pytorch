@@ -277,6 +277,8 @@ def preprocess_dataset(path, is_test_set=False):
         ### Else, let's address context first
             context = obj["context"].replace("''", '" ').replace("``", '" ')
             d_dict = tokenize(context)
+            if len(d_dict['offsets']) > max_words:
+                continue
 
             try:
                 qs = [q for q in obj['qas']]
