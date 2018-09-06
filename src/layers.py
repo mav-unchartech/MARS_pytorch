@@ -187,6 +187,7 @@ class SeqAttnMatch(nn.Module):
             x_proj = F.relu(x_proj)
             y_proj = self.linear(y.view(-1, y.size(2))).view(y.size())
             y_proj = F.relu(y_proj)
+
         else:
             x_proj = x
             y_proj = y
@@ -196,12 +197,15 @@ class SeqAttnMatch(nn.Module):
 
         # Mask padding
         y_mask = y_mask.unsqueeze(1).expand(scores.size())
+        print('y_mask', y_mask)
         scores.data.masked_fill_(y_mask.data, -float('inf'))
+        print('scores', scores)
 
         # Normalize with softmax
         #print('before softmax : ', scores.view(-1, y.size(1)))
         alpha_flat = F.softmax(scores.view(-1, y.size(1)), dim=0)
         alpha = alpha_flat.view(-1, x.size(1), y.size(1))
+        print('alpha', alpha)
 
         # Take weighted average
         matched_seq = alpha.bmm(y)

@@ -36,8 +36,9 @@ class Example:
     def __str__(self):
         return 'Passage: %s\n Question: %s\n  Label: %d' % (self.passage, self.question, self.y)
 
-def _to_indices_and_mask(batch_tensor, need_mask=True, is_question=True ):
-    mx_len = 750#max([t.size(0) for t in batch_tensor])
+def _to_indices_and_mask(batch_tensor, need_mask=True, is_question=False):
+    if is_question: mx_len = max([t.size(0) for t in batch_tensor])
+    else: mx_len = 750
     batch_size = len(batch_tensor)
     indices = torch.LongTensor(batch_size, mx_len).fill_(0)
     if need_mask:
@@ -74,7 +75,7 @@ def batchify(batch_data):
     p_pos = _to_indices_and_mask([ex.d_pos_tensor for ex in batch_data], need_mask=False)
     p_ner = _to_indices_and_mask([ex.d_ner_tensor for ex in batch_data], need_mask=False)
     p_q_relation = _to_indices_and_mask([ex.p_q_relation for ex in batch_data], need_mask=False)
-    q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data])
+    q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data], is_question= False)
     q_pos = _to_indices_and_mask([ex.q_pos_tensor for ex in batch_data], need_mask=False)
     f_tensor = _to_feature_tensor([ex.features for ex in batch_data])
     #y_start = torch.LongTensor([ex.y_start for ex in batch_data])
