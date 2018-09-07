@@ -156,7 +156,6 @@ class StackedBRNN(nn.Module):
                                training=self.training)
         return output
 
-
 class SeqAttnMatch(nn.Module):
     """Given sequences X and Y, match sequence Y to each element in X.
 
@@ -206,7 +205,6 @@ class SeqAttnMatch(nn.Module):
         matched_seq = alpha.bmm(y)
         return matched_seq
 
-
 class BilinearSeqAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:
 
@@ -239,12 +237,6 @@ class BilinearSeqAttn(nn.Module):
             alpha = xWy.exp()
         return alpha
 
-
-
-
-
-
-
 class BilinearProbaAttn(nn.Module):
     """A bilinear attention layer over a sequence X w.r.t y:
 
@@ -273,19 +265,15 @@ class BilinearProbaAttn(nn.Module):
             alpha = batch * len
         """
 
-        xWy = self.bilinear(x.unsqueeze(2), y.unsqueeze(2))
-        xWy.data.masked_fill_(x_mask.data.unsqueeze(1), -float('inf'))
+        xWy = self.bilinear(x, y)
+        print('xWy', xWy.size())
+        print('x_mask', x_mask.size())
+        xWy.data.masked_fill_(x_mask.data.unsqueeze(2), -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, -1)
         else:
             alpha = xWy.exp()
         return alpha
-
-
-
-
-
-
 
 class LinearSeqAttn(nn.Module):
     """Self attention over a sequence:
@@ -306,7 +294,6 @@ class LinearSeqAttn(nn.Module):
             alpha: batch * len
         """
         xWx = self.bilinear(x, x)
-        print(xWx.size())
         alpha = F.softmax(xWx, -1)
         return alpha
 
@@ -327,7 +314,6 @@ class NeuralNet(nn.Module):
 # Functional
 # ------------------------------------------------------------------------------
 
-
 def uniform_weights(x, x_mask):
     """Return uniform weights over non-masked x (a sequence of vectors).
 
@@ -343,7 +329,6 @@ def uniform_weights(x, x_mask):
     alpha = alpha * x_mask.eq(0).float()
     alpha = alpha / alpha.sum(1).expand(alpha.size())
     return alpha
-
 
 def weighted_avg(x, weights):
     """Return a weighted average of x (a sequence of vectors).
