@@ -277,20 +277,20 @@ class BilinearProbaAttn(nn.Module):
         """
 
 
-        print(y.size())
+        # print(y.size())
 
         xW = self.linear(x.transpose(1,2))
-        print('xW' , xW.size())
+        # print('xW' , xW.size())
 
         xWy = y.bmm(xW)
 
-        print('xWy ', xWy.size(), xWy)
-        print('x_mask', x_mask.size())
+        # print('xWy ', xWy.size(), xWy)
+        # print('x_mask', x_mask.size())
         xWy.data.masked_fill_(x_mask.data.unsqueeze(2), -float('inf'))
 
         if self.normalize:
             alpha = F.softmax(xWy, -1)
-            print('alpha ',alpha.size())
+            # print('alpha ',alpha.size())
         else:
             alpha = xWy.exp()
         return alpha

@@ -108,31 +108,31 @@ class TriAN(nn.Module):
 
         ##### BiLSTM layer
         p_hiddens = self.doc_rnn(p_rnn_input, p_mask)
-        print('p_hiden ', p_hiddens.size())
+        # print('p_hiden ', p_hiddens.size())
         q_hiddens = self.question_rnn(q_rnn_input, q_mask)
 
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens)
         q_hidden_start = layers.weighted_avg(q_hiddens, q_merge_weights_start)
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start)
-        print('p_merge_weights_start', p_merge_weights_start.size())
+        # print('p_merge_weights_start', p_merge_weights_start.size())
         p_hidden_start = layers.weighted_avg(q_hidden_start, p_merge_weights_start.transpose(1,2))
-        print('p_hidden_start', p_hidden_start.size())
+        # print('p_hidden_start', p_hidden_start.size())
 
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens)
-        print('q_merge_weights_end', q_merge_weights_end.size())
+        # print('q_merge_weights_end', q_merge_weights_end.size())
 
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
-        print('q_hidden_end', q_hidden_end.size())
+        # print('q_hidden_end', q_hidden_end.size())
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end)
-        print('p_merge_weights_end', q_hidden_end.size())
+        # print('p_merge_weights_end', q_hidden_end.size())
         p_hidden_end = layers.weighted_avg(q_hidden_end, p_merge_weights_end.transpose(1,2))
-        print('p_hidden_end', p_hidden_start.size())
+        # print('p_hidden_end', p_hidden_start.size())
         #### START SINGLE PROBA MAP
 
         logits_start = self.p_linear_start(p_hidden_start)
-        print(logits_start.size())
+        # print(logits_start.size())
 
 
         logits_start.data.masked_fill_(p_mask.unsqueeze(2).data, 0)
@@ -144,21 +144,21 @@ class TriAN(nn.Module):
         logits_end.data.masked_fill_(p_mask.unsqueeze(2).data, 0)
         single_map_proba_end = torch.sigmoid(logits_end)
         single_map_proba_end.data.masked_fill_(p_mask.unsqueeze(2).data, 0)
-        print('single_map_proba_end ',single_map_proba_end.size())
+        # print('single_map_proba_end ',single_map_proba_end.size())
         #### START END ATTENTION
         attn_map_weights_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
         attn_map_weights_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
-        print('attn_map_weights_start', attn_map_weights_start.size())
+        # print('attn_map_weights_start', attn_map_weights_start.size())
         attn_map_start = layers.weighted_avg(single_map_proba_start, attn_map_weights_start)
         attn_map_end = layers.weighted_avg(single_map_proba_end, attn_map_weights_end)
-        print('attn_map_start', attn_map_start.size())
+        # print('attn_map_start', attn_map_start.size())
 
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start.squeeze(2))
         ff_map_end = self.feedforward_end(attn_map_end.squeeze(2))
         ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
-        print('ff_map_start', ff_map_start.size())
+        # print('ff_map_start', ff_map_start.size())
 
         #### OUTPUT
         probas_start = F.softmax(ff_map_start, -1)
