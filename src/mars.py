@@ -161,5 +161,4 @@ class TriAN(nn.Module):
         #### OUTPUT
         probas_start = F.softmax(ff_map_start, -1)
         probas_end = F.softmax(ff_map_end, -1)
-        print(probas_start, probas_end)
         return probas_start, probas_end

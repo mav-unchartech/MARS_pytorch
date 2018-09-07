@@ -8,7 +8,7 @@ import math
 import wikiwords
 from collections import Counter
 
-
+max_words = 400
 
 class Tokens(object):
     """A class to represent a list of tokenized text."""
@@ -297,12 +297,16 @@ def preprocess_dataset(path, is_test_set=False):
 
                 c_dict = tokenize(ans['text'])
                 y1 = ans['answer_start']
-                y2 = ans['answer_start']+len(ans['text'])
+                y2 = ans['answer_start']+len(ans['text'])-1
                 y = [y1,y2] if not is_test_set else -1
 
                 ### Answers vectors
                 y_start = [int(y1 in i) for i in d_dict['offsets']]
                 y_end = [int(y2 in i) for i in d_dict['offsets']]
+                if 1 not in y_start:
+                    continue
+                if 1 not in y_end:
+                    continue
                 y = [y_start, y_end]
                 example = get_example(q_id, d_dict, q_dict, c_dict, y_start, y_end, y)
                 example.update(compute_features(d_dict, q_dict, c_dict))

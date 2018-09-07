@@ -55,18 +55,42 @@ class Model:
         for batch_input in self._iter_data(train_data):
             feed_input = [x for x in batch_input[:-1]]
             y = batch_input[-1]
-            y_start = y[0][0]
-            y_end = y[0][1]
+            print(y.size())
+            y = y.transpose(0,1)
+            y_start = y[0]
+            y_end = y[1]
+            y_end_liste = []
+            y_start_liste = []
+            to_remove = []
+            for i in range(len(y_end)):
+                try:
+
+                    a = list(y_start[i].numpy()).index(1)
+                    b = list(y_end[i].numpy()).index(1)
+                except ValueError:
+                    to_remove.append(i)
+                    continue
+                y_start_liste.append(a)
+                y_end_liste.append(b)
+
+            y_start = torch.LongTensor(y_start_liste)
+            y_end = torch.LongTensor(y_end_liste)
+            print(y_end)
             #y_end = [int(i) for i in batch_input[-1][1]]
             #y_start = [int(i) for i in batch_input[-1][0]]
-            y_start = y[0][0]
-            y_end = y[0][1]
             pred_proba = self.network(*feed_input)
             pred_proba_start = pred_proba[0]
             pred_proba_end = pred_proba[1]
-
+            for i in to_remove:
+                pred_proba_start = pred_proba_start.detach().numpy()
+                pred_proba_end = pred_proba_end.detach().numpy()
+                pred_proba_start = np.delete(pred_proba_start,i, axis = 0)
+                pred_proba_end = np.delete(pred_proba_end,i, axis = 0)
+                pred_proba_start = torch.LongTensor(pred_proba_start)
+                pred_proba_end = torch.LongTensor(pred_proba_end)
             # pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
             # pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
+            print(pred_proba_start.size())
 
             # loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
             #loss = -(math.log(pred_proba_start[y1])+math.log(pred_proba_start[y2]))  size_average=True
