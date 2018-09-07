@@ -99,38 +99,52 @@ class TriAN(nn.Module):
             q_pos_emb = nn.functional.dropout(q_pos_emb, p=self.args.dropout_emb, training=self.training)
             p_q_rel_emb = nn.functional.dropout(p_q_rel_emb, p=self.args.dropout_emb, training=self.training)
 
+        print('in', p_emb, q_emb, q_mask)
+
         p_q_weighted_emb = self.p_q_emb_match(p_emb, q_emb, q_mask)
+        print('p_q_weighted_emb', p_q_weighted_emb)
         p_q_weighted_emb = nn.functional.dropout(p_q_weighted_emb, p=self.args.dropout_emb, training=self.training)
-        print('p_q_weighted_emb', p_q_weighted_emb.size())
+        print('p_q_weighted_emb', p_q_weighted_emb, p_q_weighted_emb.size())
         p_rnn_input = torch.cat([p_emb, p_q_weighted_emb, p_pos_emb, p_ner_emb, f_tensor, p_q_rel_emb], dim=2)
         q_rnn_input = torch.cat([q_emb, q_pos_emb], dim=2)
-        print('p_rnn_input', p_rnn_input.size())
+        print('p_rnn_input', p_rnn_input, p_rnn_input.size())
 
         ##### BiLSTM layer
         p_hiddens = self.doc_rnn(p_rnn_input, p_mask)
         q_hiddens = self.question_rnn(q_rnn_input, q_mask)
         print('p_hiddens', p_hiddens.size())
         print('q_hiddens ', q_hiddens.size() )
+        print('p_hiddens', p_hiddens, p_hiddens.size())
+
 
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens, q_mask)
         q_hidden_start = layers.weighted_avg(q_hiddens, q_merge_weights_start)
+
         print('q_hidden_start : ', q_hidden_start.size())
+
+        print('p_hiddens : ', p_hiddens, p_hiddens.size())
+
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start, p_mask)
         print('p_merge_weights_start : ', p_merge_weights_start)
         p_hidden_start = layers.weighted_avg(p_hiddens, p_merge_weights_start)
-        print('p_hidden_start', p_hidden_start.size())
+        print('p_hidden_start', p_hidden_start, p_hidden_start.size())
 
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
+
         print('q_merge_weights_end',q_merge_weights_end, q_merge_weights_end.size())
+
+        print('q_merge_weights_end', q_merge_weights_end, q_merge_weights_end.size())
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
         print('p_merge_weights_end  ', p_merge_weights_end.size())
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
         print('p_hidden_start', p_hidden_start.size(), p_hidden_start)
-        print('q_hidden_start', q_hidden_start.size(), q_hidden_start)
+        print('p_hidden_end', p_hidden_end, p_hidden_end.size())
+
+
         #### START SINGLE PROBA MAP
 
         logits_start = self.p_q_bilinear_start(p_hidden_start,q_hidden_start)
