@@ -23,8 +23,7 @@ class StackedBRNN(nn.Module):
         self.num_layers = num_layers
         self.concat_layers = concat_layers
         self.rnns = nn.ModuleList()
-        # print('hidden size: ' + str(hidden_size))
-        # print('input_size: ' + str(input_size))
+
         for i in range(num_layers):
             input_size = input_size if i == 0 else 2 * hidden_size
             self.rnns.append(rnn_type(input_size, hidden_size,
@@ -194,18 +193,15 @@ class SeqAttnMatch(nn.Module):
 
         # Compute scores
         scores = x_proj.bmm(y_proj.transpose(2, 1))
-        print('scores ; ', scores)
+
         # Mask padding
         y_mask = y_mask.unsqueeze(1).expand(scores.size())
         scores.data.masked_fill_(y_mask.data, -float('inf'))#
-        print('scores2 ; ', scores)
+
         # Normalize with softmax
-        #print('before softmax : ', scores.view(-1, y.size(1)))
         alpha_flat = F.softmax(scores.view(-1, y.size(1)),-1)
         alpha = alpha_flat.view(-1, x.size(1), y.size(1))
-        print(alpha.size())
-        print('alpha ', alpha)
-        print(alpha[0,:8,:18])
+
         # Take weighted average
         matched_seq = alpha.bmm(y)
         return matched_seq
@@ -219,17 +215,14 @@ class BilinearSeqAttn(nn.Module):
     Optionally don't normalize output weights.
     """
 
-    def __init__(self, x_size, y_size, identity=False, normalize=True):
+    def __init__(self, z_in, z_out, identity=False, normalize=True):
         super(BilinearSeqAttn, self).__init__()
         self.normalize = normalize
 
         # If identity is true, we just use a dot product without transformation.
-        if not identity:
-            self.linear = nn.Linear(y_size, x_size)
-        else:
-            self.linear = None
+        self.bilinear = nn.Bilinear(z_in, z_in, z_out)
 
-    def forward(self, x, y, x_mask):
+    def forward(self, x, y):
         """
         Args:
             x: batch * len * hdim1
@@ -237,15 +230,9 @@ class BilinearSeqAttn(nn.Module):
             x_mask: batch * len (1 for padding, 0 for true)
         Output:
             alpha = batch * len
+
         """
-        Wy = self.linear(y) if self.linear is not None else y
-        print('Wy : ', Wy.size())
-        xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
-        print('xWy : ', xWy.size())
-
-
-        xWy.data.masked_fill_(x_mask.data, -float('inf'))
-        print('xWy_mask_filled : ', xWy.size())
+        xWy = self.bilinear(x, y)
         if self.normalize:
             alpha = F.softmax(xWy, -1)
         else:
@@ -285,11 +272,8 @@ class BilinearProbaAttn(nn.Module):
         Output:
             alpha = batch * len
         """
-        print(x.size())
-        print(y.size())
+
         xWy = self.bilinear(x.unsqueeze(2), y.unsqueeze(2))
-        print(xWy.data.size())
-        print(x_mask.size())
         xWy.data.masked_fill_(x_mask.data.unsqueeze(1), -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, -1)
@@ -309,11 +293,11 @@ class LinearSeqAttn(nn.Module):
     * o_i = softmax(Wx_i) for x_i in X.
     """
 
-    def __init__(self, input_size):
+    def __init__(self, z_in, z_out):
         super(LinearSeqAttn, self).__init__()
-        self.linear = nn.Linear(input_size, 1)
+        self.bilinear = nn.Bilinear(z_in, z_in, z_out)
 
-    def forward(self, x, x_mask):
+    def forward(self, x):
         """
         Args:
             x: batch * len * hdim
@@ -321,10 +305,9 @@ class LinearSeqAttn(nn.Module):
         Output:
             alpha: batch * len
         """
-        x_flat = x.view(-1, x.size(-1))
-        scores = self.linear(x_flat).view(x.size(0), x.size(1))
-        scores.data.masked_fill_(x_mask.data, 0)
-        alpha = F.softmax(scores, -1)
+        xWx = self.bilinear(x, x)
+        print(xWx.size())
+        alpha = F.softmax(xWx, -1)
         return alpha
 
 class NeuralNet(nn.Module):
@@ -371,4 +354,4 @@ def weighted_avg(x, weights):
     Output:
         x_avg: batch * hdim
     """
-    return weights.unsqueeze(1).bmm(x).squeeze(1)
+    return weights.bmm(x)
