@@ -134,17 +134,15 @@ class TriAN(nn.Module):
         #### START END ATTENTION
         attn_map_weights_start = self.start_end_attn(single_map_proba_start, single_map_proba_end, p_mask)
         attn_map_weights_end = self.end_start_attn(single_map_proba_end, single_map_proba_start, p_mask)
-        print('attn_map_weights_start', attn_map_weights_start.size())
+
         attn_map_start = layers.weighted_avg(single_map_proba_start, attn_map_weights_start)
         attn_map_end = layers.weighted_avg(single_map_proba_end, attn_map_weights_end)
-        print('attn_map_start', attn_map_start.size())
 
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start.squeeze(2))
         ff_map_end = self.feedforward_end(attn_map_end.squeeze(2))
         ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
-        print('ff_map_start', ff_map_start.size())
 
         #### OUTPUT
         probas_start = F.softmax(ff_map_start, -1)

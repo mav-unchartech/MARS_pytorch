@@ -78,7 +78,5 @@ def batchify(batch_data):
     q, q_mask = _to_indices_and_mask([ex.q_tensor for ex in batch_data], is_question= False)
     q_pos = _to_indices_and_mask([ex.q_pos_tensor for ex in batch_data], need_mask=False)
     f_tensor = _to_feature_tensor([ex.features for ex in batch_data])
-    #y_start = torch.LongTensor([ex.y_start for ex in batch_data])
-    #y_end = torch.LongTensor([ex.y_end for ex in batch_data])
     y = _out_tensor([ex.y for ex in batch_data])
     return p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation, y

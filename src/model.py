@@ -90,38 +90,34 @@ class Model:
         self.scheduler.step()
         print('LR:', self.scheduler.get_lr()[0])
 
-    def output_to_map(prediction):
-        start_maps, end_maps = [], []
-        for sub_start, sub_end in zip(prediction[0], prediction[1]):
+    def output_to_map(prediction_start, prediction_end):
+        maps = []
+        for sub_start, sub_end in zip(prediction_start, prediction_end):
             start = int(torch.argmax(sub_start))
             end = int(torch.argmax(sub_end))
-            start_maps.append([0] * start + [1] + [0]*(len(prediction[0]) - start))
-            end_maps.append([0] * end + [1] + [0]*(len(prediction[0]) - end))
-        return start_maps, end_maps
+            start, end = min(start, end), max(start, end)
+            maps.append([0] * start + [1] * (end - start) + [0]*(len(sub_start) - end))
+        return maps
 
     def map_padding(start, end):
         padded = []
         padded.extend([0] * start.index(1))
-        padded.extend([1] * (end.index(1) - start.index(1) + 1))
-        padded.extend([0] * (len(start) - end.index(1) - 1))
+        padded.extend([1] * (end.index(1) - start.index(1)))
+        padded.extend([0] * (len(start) - end.index(1)))
         return padded
 
     def evaluate(self, dev_data):
         from sklearn.metrics import f1_score
         f1_scores = []
-        for batch_input in model._iter_data(dev_data):
-                print(batch_input)
-                feed_input = [x for x in batch_input[:-1]]
-                pred_proba = model.network(*feed_input)
-                print(pred_proba)
-                map_pred = output_to_map(pred_proba)
-                for i, data in enumerate(feed_input):
-                    print(data)
-                    truth = map_padding(data.y_start, data.y_end)
-                    prediction = map_padding(map_pred[0][i], map_pred[1][i])
-                    f1_scores += f1_score(truth, prediction)
-        return sum(f1_scores)/len(f1_scores)
-
+        for batch_input in self._iter_data(dev_data):
+            feed_input = [x for x in batch_input[:-1]]
+            pred_proba = self.network(*feed_input)
+        return pred_proba
+        #     map_pred = self.output_to_map(pred_proba)
+        #     for i, data in enumerate(feed_input):
+        #         truth = self.map_padding(data.y_start, data.y_end)
+        #         f1_scores.append(f1_score(truth, map_pred[i][:len(truth)]))
+        # return sum(f1_scores)/len(f1_scores)
 
     def predict(self, test_data):
         # DO NOT SHUFFLE test_data

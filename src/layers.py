@@ -266,8 +266,6 @@ class BilinearProbaAttn(nn.Module):
         """
 
         xWy = self.bilinear(x, y)
-        print('xWy', xWy.size())
-        print('x_mask', x_mask.size())
         xWy.data.masked_fill_(x_mask.data.unsqueeze(2), -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, -1)
