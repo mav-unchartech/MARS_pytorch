@@ -77,7 +77,7 @@ class TriAN(nn.Module):
         self.end_start_attn = layers.BilinearProbaAttn(p_max_size)
 
         # Feed forward
-        self.feedforward_start = layers.NeuralNet(, p_max_size, p_max_size)
+        self.feedforward_start = layers.NeuralNet(p_max_size, p_max_size, p_max_size)
         self.feedforward_end = layers.NeuralNet(p_max_size, p_max_size, p_max_size)
 
     def forward(self, p, p_pos, p_ner, p_mask, q, q_pos, q_mask, f_tensor, p_q_relation):
@@ -140,14 +140,13 @@ class TriAN(nn.Module):
         print('attn_map_start', attn_map_start.size())
 
         #### FEED FORWARD
-        ff_map_start = self.feedforward_start(attn_map_start)
-        ff_map_end = self.feedforward_end(attn_map_end)
-        print('ff_map_start', ff_map_start.size())
-        p_mask = p_mask.unsqueeze(1).expand(ff_map_start.size())
+        ff_map_start = self.feedforward_start(attn_map_start.squeeze(2))
+        ff_map_end = self.feedforward_end(attn_map_end.squeeze(2))
         ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
+        print('ff_map_start', ff_map_start.size())
 
         #### OUTPUT
-        probas_start = F.softmax(ff_map_start, dim = 0)
-        probas_end = F.softmax(ff_map_end, dim = 0)
+        probas_start = F.softmax(ff_map_start, -1)
+        probas_end = F.softmax(ff_map_end, -1)
         return probas_start, probas_end
