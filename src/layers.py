@@ -213,12 +213,13 @@ class BilinearSeqAttn(nn.Module):
     Optionally don't normalize output weights.
     """
 
-    def __init__(self, z_in, z_out, identity=False, normalize=True):
+    def __init__(self, z_in,y_in, z_out, identity=False, normalize=True):
         super(BilinearSeqAttn, self).__init__()
         self.normalize = normalize
 
         # If identity is true, we just use a dot product without transformation.
-        self.bilinear = nn.Bilinear(z_in, z_in, z_out)
+        # self.bilinear = nn.Bilinear(z_in, y_in, z_out)
+        self.linear = nn.Linear(z_in,z_out)
 
     def forward(self, x, y):
         """
@@ -230,9 +231,17 @@ class BilinearSeqAttn(nn.Module):
             alpha = batch * len
 
         """
-        xWy = self.bilinear(x, y)
+        x = x.transpose(1,2)
+        # y = y.transpose(1,2)
+
+        xW = self.linear(x)
+        # print('xW : ' , xW.size())
+        xWy = y.bmm(xW)
+        # xWy = xWy.transpose(1,2)
+        # print('xWy ', xWy.size(), xWy)
         if self.normalize:
             alpha = F.softmax(xWy, -1)
+            # print('alpha ',alpha.size())
         else:
             alpha = xWy.exp()
         return alpha
@@ -250,10 +259,12 @@ class BilinearProbaAttn(nn.Module):
         self.normalize = normalize
 
         # If identity is true, we just use a dot product without transformation.
-        if not identity:
-            self.bilinear = nn.Bilinear(1, 1, z_size)
-        else:
-            self.linear = None
+        # if not identity:
+        #     self.bilinear = nn.Bilinear(1, 1, z_size)
+        # else:
+        #     self.linear = None
+
+        self.linear = nn.Linear(z_size, z_size)
 
     def forward(self, x, y, x_mask):
         """
@@ -265,10 +276,21 @@ class BilinearProbaAttn(nn.Module):
             alpha = batch * len
         """
 
-        xWy = self.bilinear(x, y)
+
+        # print(y.size())
+
+        xW = self.linear(x.transpose(1,2))
+        # print('xW' , xW.size())
+
+        xWy = y.bmm(xW)
+
+        # print('xWy ', xWy.size(), xWy)
+        # print('x_mask', x_mask.size())
         xWy.data.masked_fill_(x_mask.data.unsqueeze(2), -float('inf'))
+
         if self.normalize:
             alpha = F.softmax(xWy, -1)
+            # print('alpha ',alpha.size())
         else:
             alpha = xWy.exp()
         return alpha
