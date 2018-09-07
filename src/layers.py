@@ -239,7 +239,6 @@ class BilinearSeqAttn(nn.Module):
             alpha = batch * len
         """
         Wy = self.linear(y) if self.linear is not None else y
-<<<<<<< HEAD
         print('Wy : ', Wy.size())
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
         print('xWy : ', xWy.size())
@@ -247,20 +246,6 @@ class BilinearSeqAttn(nn.Module):
 
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         print('xWy_mask_filled : ', xWy.size())
-
-=======
-        # print('Wy : ',Wy.size())
-        # print('Wyunsqueezed', Wy.unsqueeze(2).size())
-        # print('x', x.size())
-        # print('x_mask', x_mask.size())
-        # print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
-        print('Wy : ', Wy)
-        xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
-        print('xWy : ', xWy)
-        # print('squeezed : ', xWy)
-        xWy.data.masked_fill_(x_mask.data, -float('inf'))
-        print('xWy_afterfill : ', xWy)
->>>>>>> d1d71bdb54233ba8f20cffb8da2eb9f4d00c592b
         if self.normalize:
             alpha = F.softmax(xWy, -1)
         else:
