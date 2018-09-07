@@ -90,9 +90,9 @@ class Model:
         self.scheduler.step()
         print('LR:', self.scheduler.get_lr()[0])
 
-    def output_to_map(prediction_start, prediction_end):
+    def output_to_map(prediction):
         maps = []
-        for sub_start, sub_end in zip(prediction_start, prediction_end):
+        for sub_start, sub_end in zip(prediction[0], prediction[1]):
             start = int(torch.argmax(sub_start))
             end = int(torch.argmax(sub_end))
             start, end = min(start, end), max(start, end)
@@ -107,17 +107,18 @@ class Model:
         return padded
 
     def evaluate(self, dev_data):
-        from sklearn.metrics import f1_score
-        f1_scores = []
-        for batch_input in self._iter_data(dev_data):
-            feed_input = [x for x in batch_input[:-1]]
-            pred_proba = self.network(feed_input)
-            print('pred_proba: ',len(pred_proba) , pred_proba)
-            map_pred = self.output_to_map(pred_proba)
-            for i, data in enumerate(feed_input):
-                truth = self.map_padding(data.y_start, data.y_end)
-                f1_scores.append(f1_score(truth, map_pred[i][:len(truth)]))
-        return sum(f1_scores)/len(f1_scores)
+        # from sklearn.metrics import f1_score
+        # f1_scores = []
+        # for batch_input in self._iter_data(dev_data):
+        #     feed_input = [x for x in batch_input[:-1]]
+        #     pred_proba = self.network(*feed_input)
+        #     print('pred_proba: ',len(pred_proba) , pred_proba)
+        #     map_pred = self.output_to_map(pred_proba)
+        #     for i, data in enumerate(feed_input):
+        #         truth = self.map_padding(data.y_start, data.y_end)
+        #         f1_scores.append(f1_score(truth, map_pred[i][:len(truth)]))
+        # return sum(f1_scores)/len(f1_scores)
+        return 0
 
     def predict(self, test_data):
         # DO NOT SHUFFLE test_data
