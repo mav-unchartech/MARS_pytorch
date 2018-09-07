@@ -193,16 +193,18 @@ class SeqAttnMatch(nn.Module):
 
         # Compute scores
         scores = x_proj.bmm(y_proj.transpose(2, 1))
-
+        print('scores ; ', scores)
         # Mask padding
         y_mask = y_mask.unsqueeze(1).expand(scores.size())
-        scores.data.masked_fill_(y_mask.data, -float('inf'))
-
+        scores.data.masked_fill_(y_mask.data, -float('inf'))#
+        print('scores2 ; ', scores)
         # Normalize with softmax
         #print('before softmax : ', scores.view(-1, y.size(1)))
-        alpha_flat = F.softmax(scores.view(-1, y.size(1)), dim=0)
+        alpha_flat = F.softmax(scores.view(-1, y.size(1)),-1)
         alpha = alpha_flat.view(-1, x.size(1), y.size(1))
-
+        print(alpha.size())
+        print('alpha ', alpha)
+        print(alpha[0,:8,:18])
         # Take weighted average
         matched_seq = alpha.bmm(y)
         return matched_seq
@@ -242,10 +244,12 @@ class BilinearSeqAttn(nn.Module):
         # print('x', x.size())
         # print('x_mask', x_mask.size())
         # print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
-
+        print('Wy : ', Wy)
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
+        print('xWy : ', xWy)
         # print('squeezed : ', xWy)
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        print('xWy_afterfill : ', xWy)
         if self.normalize:
             #print('xWy : ', xWy)
             alpha = F.softmax(xWy, dim = 0)
@@ -287,8 +291,12 @@ class BilinearProbaAttn(nn.Module):
         Output:
             alpha = batch * len
         """
+        print(x.size())
+        print(y.size())
         xWy = self.bilinear(x.unsqueeze(2), y.unsqueeze(2))
-        xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        print(xWy.data.size())
+        print(x_mask.size())
+        xWy.data.masked_fill_(x_mask.data.unsqueeze(1), -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, dim = 0)
         else:

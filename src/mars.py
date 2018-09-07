@@ -110,25 +110,29 @@ class TriAN(nn.Module):
         p_hiddens = self.doc_rnn(p_rnn_input, p_mask)
         q_hiddens = self.question_rnn(q_rnn_input, q_mask)
         print('p_hiddens', p_hiddens.size())
+        print('q_hiddens ', q_hiddens.size() )
 
         #### START ATTENTION LAYER
         q_merge_weights_start = self.q_self_attn_start(q_hiddens, q_mask)
         q_hidden_start = layers.weighted_avg(q_hiddens, q_merge_weights_start)
-        print('p_hiddens : ', p_hiddens.size())
+        print('q_hidden_start : ', q_hidden_start.size())
         p_merge_weights_start = self.p_q_attn_start(p_hiddens, q_hidden_start, p_mask)
+        print('p_merge_weights_start : ', p_merge_weights_start)
         p_hidden_start = layers.weighted_avg(p_hiddens, p_merge_weights_start)
         print('p_hidden_start', p_hidden_start.size())
 
         #### END ATTENTION LAYER
         q_merge_weights_end = self.q_self_attn_end(q_hiddens, q_mask)
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
-        print('q_merge_weights_end', q_merge_weights_end.size())
+        print('q_merge_weights_end',q_merge_weights_end, q_merge_weights_end.size())
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
+        print('p_merge_weights_end  ', p_merge_weights_end.size())
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
-        print('p_hidden_end', p_hidden_end.size())
-
+        print('p_hidden_start', p_hidden_start.size(), p_hidden_start)
+        print('q_hidden_start', q_hidden_start.size(), q_hidden_start)
         #### START SINGLE PROBA MAP
+
         logits_start = self.p_q_bilinear_start(p_hidden_start,q_hidden_start)
         print('logits_start', logits_start, logits_start.size())
         logits_start.data.masked_fill_(p_mask.data, 0)
@@ -151,6 +155,7 @@ class TriAN(nn.Module):
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start)
         ff_map_end = self.feedforward_end(attn_map_end)
+        p_mask = p_mask.unsqueeze(1).expand(ff_map_start.size())
         ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
 
