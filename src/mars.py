@@ -132,9 +132,11 @@ class TriAN(nn.Module):
         q_hidden_end = layers.weighted_avg(q_hiddens, q_merge_weights_end)
 
         p_merge_weights_end = self.p_q_attn_end(p_hiddens, q_hidden_end, p_mask)
+        print('p_merge_weights_end  ', p_merge_weights_end.size())
         p_hidden_end = layers.weighted_avg(p_hiddens, p_merge_weights_end)
 
         #### START SINGLE PROBA MAP
+
         logits_start = self.p_q_bilinear_start(p_hidden_start,q_hidden_start)
         print('logits_start', logits_start.size())
         logits_start.data.masked_fill_(p_mask.data, 0)
@@ -157,6 +159,7 @@ class TriAN(nn.Module):
         #### FEED FORWARD
         ff_map_start = self.feedforward_start(attn_map_start)
         ff_map_end = self.feedforward_end(attn_map_end)
+        p_mask = p_mask.unsqueeze(1).expand(ff_map_start.size())
         ff_map_start.data.masked_fill_(p_mask.data, -float('inf'))
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
 

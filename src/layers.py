@@ -194,16 +194,18 @@ class SeqAttnMatch(nn.Module):
 
         # Compute scores
         scores = x_proj.bmm(y_proj.transpose(2, 1))
-
+        print('scores ; ', scores)
         # Mask padding
         y_mask = y_mask.unsqueeze(1).expand(scores.size())
-        scores.data.masked_fill_(y_mask.data, -float('inf'))
-
+        scores.data.masked_fill_(y_mask.data, -float('inf'))#
+        print('scores2 ; ', scores)
         # Normalize with softmax
         #print('before softmax : ', scores.view(-1, y.size(1)))
-        alpha_flat = F.softmax(scores.view(-1, y.size(1)), dim=0)
+        alpha_flat = F.softmax(scores.view(-1, y.size(1)),-1)
         alpha = alpha_flat.view(-1, x.size(1), y.size(1))
-
+        print(alpha.size())
+        print('alpha ', alpha)
+        print(alpha[0,:8,:18])
         # Take weighted average
         matched_seq = alpha.bmm(y)
         return matched_seq
@@ -237,6 +239,7 @@ class BilinearSeqAttn(nn.Module):
             alpha = batch * len
         """
         Wy = self.linear(y) if self.linear is not None else y
+<<<<<<< HEAD
         print('Wy : ', Wy.size())
         xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
         print('xWy : ', xWy.size())
@@ -245,6 +248,19 @@ class BilinearSeqAttn(nn.Module):
         xWy.data.masked_fill_(x_mask.data, -float('inf'))
         print('xWy_mask_filled : ', xWy.size())
 
+=======
+        # print('Wy : ',Wy.size())
+        # print('Wyunsqueezed', Wy.unsqueeze(2).size())
+        # print('x', x.size())
+        # print('x_mask', x_mask.size())
+        # print('Wybmm', x.bmm(Wy.unsqueeze(2)).size())
+        print('Wy : ', Wy)
+        xWy = x.bmm(Wy.unsqueeze(2)).squeeze(2)
+        print('xWy : ', xWy)
+        # print('squeezed : ', xWy)
+        xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        print('xWy_afterfill : ', xWy)
+>>>>>>> d1d71bdb54233ba8f20cffb8da2eb9f4d00c592b
         if self.normalize:
             alpha = F.softmax(xWy, -1)
         else:
@@ -284,8 +300,12 @@ class BilinearProbaAttn(nn.Module):
         Output:
             alpha = batch * len
         """
+        print(x.size())
+        print(y.size())
         xWy = self.bilinear(x.unsqueeze(2), y.unsqueeze(2))
-        xWy.data.masked_fill_(x_mask.data, -float('inf'))
+        print(xWy.data.size())
+        print(x_mask.size())
+        xWy.data.masked_fill_(x_mask.data.unsqueeze(1), -float('inf'))
         if self.normalize:
             alpha = F.softmax(xWy, -1)
         else:
