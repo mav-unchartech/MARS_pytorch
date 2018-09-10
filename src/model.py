@@ -20,6 +20,7 @@ class Model:
         self.batch_size = args.batch_size
         self.finetune_topk = args.finetune_topk
         self.lr = args.lr
+        self.p_max_size= args.p_max_size
         self.use_cuda = (args.use_cuda == True) and torch.cuda.is_available()
         print('Use cuda:', self.use_cuda)
         if self.use_cuda:
@@ -55,7 +56,6 @@ class Model:
         for batch_input in self._iter_data(train_data):
             feed_input = [x for x in batch_input[:-1]]
             y = batch_input[-1]
-            print(y.size())
             y = y.transpose(0,1)
             y_start = y[0]
             y_end = y[1]
@@ -64,11 +64,11 @@ class Model:
             to_remove = []
             for i in range(len(y_end)):
                 try:
-
                     a = list(y_start[i].numpy()).index(1)
                     b = list(y_end[i].numpy()).index(1)
                 except ValueError:
                     to_remove.append(i)
+                    print('There is an question without answer')
                     continue
                 y_start_liste.append(a)
                 y_end_liste.append(b)
@@ -81,13 +81,13 @@ class Model:
             pred_proba = self.network(*feed_input)
             pred_proba_start = pred_proba[0]
             pred_proba_end = pred_proba[1]
-            for i in to_remove:
-                pred_proba_start = pred_proba_start.detach().numpy()
-                pred_proba_end = pred_proba_end.detach().numpy()
-                pred_proba_start = np.delete(pred_proba_start,i, axis = 0)
-                pred_proba_end = np.delete(pred_proba_end,i, axis = 0)
-                pred_proba_start = torch.LongTensor(pred_proba_start)
-                pred_proba_end = torch.LongTensor(pred_proba_end)
+            # for i in to_remove:
+            #     pred_proba_start = pred_proba_start.detach().numpy()
+            #     pred_proba_end = pred_proba_end.detach().numpy()
+            #     pred_proba_start = np.delete(pred_proba_start,i, axis = 0)
+            #     pred_proba_end = np.delete(pred_proba_end,i, axis = 0)
+            #     pred_proba_start = torch.LongTensor(pred_proba_start)
+            #     pred_proba_end = torch.LongTensor(pred_proba_end)
             # pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
             # pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
             print(pred_proba_start.size())
@@ -131,18 +131,55 @@ class Model:
         return padded
 
     def evaluate(self, dev_data):
-        # from sklearn.metrics import f1_score
-        # f1_scores = []
-        # for batch_input in self._iter_data(dev_data):
-        #     feed_input = [x for x in batch_input[:-1]]
-        #     pred_proba = self.network(*feed_input)
-        #     print('pred_proba: ',len(pred_proba) , pred_proba)
+        from sklearn.metrics import f1_score
+        f1_scores = []
+        for batch_input in self._iter_data(dev_data):
+            y = batch_input[-1]
+            y = y.transpose(0,1)
+            feed_input = [x for x in batch_input[:-1]]
+            pred_proba = self.network(*feed_input)
+            y_start = y[0]
+            y_end = y[1]
+            y_end_liste = []
+            y_start_liste = []
+            to_remove = []
+            for i in range(len(y_end)):
+                try:
+                    a = list(y_start[i].numpy()).index(1)
+                    b = list(y_end[i].numpy()).index(1)
+                except ValueError:
+                    to_remove.append(i)
+                    print('There is an question without answer')
+                    continue
+                y_start_liste.append(a)
+                y_end_liste.append(b)
+
+            pred_proba_start = pred_proba[0]
+            pred_proba_end = pred_proba[1]
+            for i in range(len(y_end)):
+                predictions = [0] * self.p_max_size
+                answer = [0] * self.p_max_size
+                for j in range(y_start_liste[i],y_end_liste[i]):
+                    answer[j] = 1
+                max_index_start = np.argmax(pred_proba_start[i].detach().numpy())
+                max_index_end = np.argmax(pred_proba_end[i].detach().numpy())
+                # print(max_index_start)
+                # print(max_index_end)
+                if max_index_start <= max_index_end :
+                    for j in range(max_index_start, max_index_end+1):
+                        predictions[j] = 1
+                # print('answer ', answer)
+                # print('predictions ', predictions)
+                # print('f1_score : ',f1_score(answer, predictions))
+                f1_scores.append(f1_score(answer, predictions))
+        return sum(f1_scores)/len(f1_scores)
+
         #     map_pred = self.output_to_map(pred_proba)
         #     for i, data in enumerate(feed_input):
         #         truth = self.map_padding(data.y_start, data.y_end)
         #         f1_scores.append(f1_score(truth, map_pred[i][:len(truth)]))
         # return sum(f1_scores)/len(f1_scores)
-        return 0
+
 
     def predict(self, test_data):
         # DO NOT SHUFFLE test_data
