@@ -31,7 +31,7 @@ parser.add_argument('--rel_emb_dim', type=int, default=10, help='Embedding dimen
 parser.add_argument('--seed', type=int, default=1234, help='random seed')
 parser.add_argument('--test_mode', type='bool', default=False, help='In test mode, validation data will be used for training')
 parser.add_argument('--p_max_size', type=int, default=400, help='')
-parser.add_argument('--q_max_size', type=int, default=25, help='')
+parser.add_argument('--q_max_size', type=int, default=42, help='')
 args = parser.parse_args()
 
 
