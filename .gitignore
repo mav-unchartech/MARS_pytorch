@@ -16,4 +16,5 @@ data/concept.filter
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 *.ipynb
+.ipynb
 
