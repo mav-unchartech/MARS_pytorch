@@ -159,7 +159,8 @@ class TriAN(nn.Module):
         ff_map_end.data.masked_fill_(p_mask.data, -float('inf'))
 
         #### OUTPUT
-        probas_start = F.softmax(ff_map_start, -1)
-        probas_end = F.softmax(ff_map_end, -1)
-        print(probas_start, probas_end)
-        return probas_start, probas_end
+        # probas_start = F.softmax(ff_map_start, -1)
+        # probas_start = nn.LogSoftmax(ff_map_start)
+        # # probas_end = F.softmax(ff_map_end, -1)
+        # probas_end = nn.LogSoftmax(ff_map_end)
+        return ff_map_start, ff_map_end

@@ -36,16 +36,17 @@ if __name__ == '__main__':
     for i in range(args.epoch):
         print('Epoch %d...' % i)
         if i == 0:
-            dev_acc = 0#model.evaluate(dev_data)
+            
+            dev_acc = model.evaluate(dev_data)
             print('Dev accuracy: %f' % dev_acc)
         start_time = time.time()
         np.random.shuffle(train_data)
         cur_train_data = train_data
 
         model.train(cur_train_data)
-        train_acc = model.evaluate(train_data[:2000], debug=False, eval_train=True)
+        train_acc = model.evaluate(train_data[:2000])
         print('Train accuracy: %f' % train_acc)
-        dev_acc = model.evaluate(dev_data, debug=True)
+        dev_acc = model.evaluate(dev_data)
         print('Dev accuracy: %f' % dev_acc)
 
         if dev_acc > best_dev_acc:

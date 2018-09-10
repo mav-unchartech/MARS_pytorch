@@ -1,6 +1,7 @@
 import logging
 import copy
 import torch
+import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -36,7 +37,7 @@ class Model:
         self.network.register_buffer('fixed_embedding', self.network.embedding.weight.data[self.finetune_topk:].clone())
         if self.use_cuda:
             self.network.cuda()
-        print(self.network)
+
         self._report_num_trainable_parameters()
 
     def _report_num_trainable_parameters(self):
@@ -75,12 +76,14 @@ class Model:
 
             y_start = torch.LongTensor(y_start_liste)
             y_end = torch.LongTensor(y_end_liste)
-            print(y_end)
+
             #y_end = [int(i) for i in batch_input[-1][1]]
             #y_start = [int(i) for i in batch_input[-1][0]]
             pred_proba = self.network(*feed_input)
             pred_proba_start = pred_proba[0]
             pred_proba_end = pred_proba[1]
+
+            m = nn.LogSoftmax()
             # for i in to_remove:
             #     pred_proba_start = pred_proba_start.detach().numpy()
             #     pred_proba_end = pred_proba_end.detach().numpy()
@@ -90,14 +93,14 @@ class Model:
             #     pred_proba_end = torch.LongTensor(pred_proba_end)
             # pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
             # pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
-            print(pred_proba_start.size())
+
 
             # loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
             #loss = -(math.log(pred_proba_start[y1])+math.log(pred_proba_start[y2]))  size_average=True
-            loss1 = F.nll_loss(pred_proba_start, y_start, size_average=True)
-            loss2 = F.nll_loss(pred_proba_end, y_end, size_average=True)
+            loss1 = F.nll_loss(m(pred_proba_start), y_start, size_average=True)
+            loss2 = F.nll_loss(m(pred_proba_end), y_end, size_average=True)
             loss = (loss1 + loss2) / 2
-
+            print(loss)
             self.optimizer.zero_grad()
             loss.backward()
 
@@ -110,7 +113,9 @@ class Model:
             iter_cnt += 1
 
             if self.updates % 20 == 0:
-                print('Iter: %d/%d, Loss: %f' % (iter_cnt, num_iter, loss.data[0]))
+                print('loss.data :',loss.data)
+                print('loss item ', loss.item())
+                print('Iter: %d/%d, Loss: %f' % (iter_cnt, num_iter, loss.item()))
         self.scheduler.step()
         print('LR:', self.scheduler.get_lr()[0])
 
@@ -254,6 +259,7 @@ class Model:
 
     def init_optimizer(self):
         parameters = [p for p in self.network.parameters() if p.requires_grad]
+        print('parameters ', len(parameters))
         if self.args.optimizer == 'sgd':
             self.optimizer = optim.SGD(parameters, self.lr,
                                        momentum=0.4,
