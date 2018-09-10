@@ -76,31 +76,16 @@ class Model:
 
             y_start = torch.LongTensor(y_start_liste)
             y_end = torch.LongTensor(y_end_liste)
-
-            #y_end = [int(i) for i in batch_input[-1][1]]
-            #y_start = [int(i) for i in batch_input[-1][0]]
             pred_proba = self.network(*feed_input)
-            pred_proba_start = pred_proba[0]
-            pred_proba_end = pred_proba[1]
-
-            m = nn.LogSoftmax()
-            # for i in to_remove:
-            #     pred_proba_start = pred_proba_start.detach().numpy()
-            #     pred_proba_end = pred_proba_end.detach().numpy()
-            #     pred_proba_start = np.delete(pred_proba_start,i, axis = 0)
-            #     pred_proba_end = np.delete(pred_proba_end,i, axis = 0)
-            #     pred_proba_start = torch.LongTensor(pred_proba_start)
-            #     pred_proba_end = torch.LongTensor(pred_proba_end)
-            # pred_proba_start = torch.Tensor.numpy(pred_proba_start.data)[0]
-            # pred_proba_end = torch.Tensor.numpy(pred_proba_end.data)[0]
-
-
+            pred_proba_start = F.log_softmax(pred_proba[0],-1)
+            pred_proba_end = F.log_softmax(pred_proba[1],-1)
             # loss = F.binary_cross_entropy(pred_proba, y) #/!\FLAG
             #loss = -(math.log(pred_proba_start[y1])+math.log(pred_proba_start[y2]))  size_average=True
-            loss1 = F.nll_loss(m(pred_proba_start), y_start, size_average=True)
-            loss2 = F.nll_loss(m(pred_proba_end), y_end, size_average=True)
+            loss1 = F.nll_loss(pred_proba_start, y_start, size_average=True)
+            loss2 = F.nll_loss(pred_proba_end, y_end, size_average=True)
             loss = (loss1 + loss2) / 2
-            print(loss)
+            print('word end : ',y_end)
+            print('loss :',loss)
             self.optimizer.zero_grad()
             loss.backward()
 
@@ -108,6 +93,9 @@ class Model:
 
             # Update parameters
             self.optimizer.step()
+            self.scheduler.step()
+
+
             self.network.embedding.weight.data[self.finetune_topk:] = self.network.fixed_embedding
             self.updates += 1
             iter_cnt += 1
@@ -143,6 +131,7 @@ class Model:
             y = y.transpose(0,1)
             feed_input = [x for x in batch_input[:-1]]
             pred_proba = self.network(*feed_input)
+            print(pred_proba)
             y_start = y[0]
             y_end = y[1]
             y_end_liste = []
@@ -161,13 +150,14 @@ class Model:
 
             pred_proba_start = pred_proba[0]
             pred_proba_end = pred_proba[1]
+            print(pred_proba_start)
             for i in range(len(y_end)):
                 predictions = [0] * self.p_max_size
                 answer = [0] * self.p_max_size
                 for j in range(y_start_liste[i],y_end_liste[i]):
                     answer[j] = 1
-                max_index_start = np.argmax(pred_proba_start[i].detach().numpy())
-                max_index_end = np.argmax(pred_proba_end[i].detach().numpy())
+                max_index_start = torch.argmax(pred_proba_start[i],1)
+                max_index_end = torch.argmax(pred_proba_end[i],1)
                 # print(max_index_start)
                 # print(max_index_end)
                 if max_index_start <= max_index_end :
