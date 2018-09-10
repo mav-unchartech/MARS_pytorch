@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from utils import vocab, pos_vocab, ner_vocab, rel_vocab
+from config import args
 
 class Example:
 
@@ -36,8 +37,8 @@ class Example:
         return 'Passage: %s\n Question: %s\n  Label: %d' % (self.passage, self.question, self.y)
 
 def _to_indices_and_mask(batch_tensor, need_mask=True, is_question=False):
-    if is_question: mx_len = 42#args.q_max_size#max([t.size(0) for t in batch_tensor])
-    else: mx_len = 400#args.p_max_size
+    if is_question: mx_len = args.q_max_size
+    else: mx_len = args.p_max_size
     batch_size = len(batch_tensor)
     indices = torch.LongTensor(batch_size, mx_len).fill_(0)
     if need_mask:
@@ -52,7 +53,7 @@ def _to_indices_and_mask(batch_tensor, need_mask=True, is_question=False):
         return indices
 
 def _to_feature_tensor(features):
-    mx_len = 400#max([f.size(0) for f in features])
+    mx_len = args.p_max_size
     batch_size = len(features)
     f_dim = features[0].size(1)
     f_tensor = torch.FloatTensor(batch_size, mx_len, f_dim).fill_(0)
@@ -61,7 +62,7 @@ def _to_feature_tensor(features):
     return f_tensor
 
 def _out_tensor(features):
-    mx_len = 400#max([len(f[0]) for f in features])
+    mx_len = args.p_max_size
     batch_size = len(features)
     f_dim = len(features[0])
     f_tensor = torch.LongTensor(batch_size, f_dim, mx_len).fill_(0)

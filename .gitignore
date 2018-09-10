@@ -12,3 +12,9 @@ data/RACE/
 answer.txt
 final_output.zip
 data/concept.filter
+
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+*.ipynb
+.ipynb
+
